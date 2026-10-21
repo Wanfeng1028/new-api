@@ -10,7 +10,7 @@ import (
 // brand directory.
 const brandedEmailLogoURL = "https://dashboard.botsarena.tech/brand/logo-email.png"
 const brandedEmailSiteURL = "https://botsrouter.botsarena.tech"
-const brandedEmailTagline = "一个地址 · 用上所有模型"
+const brandedEmailTagline = "你的无限 TOKEN 工厂！"
 
 func brandedEmailShell(heading string, body string) string {
 	name := html.EscapeString(SystemName)
