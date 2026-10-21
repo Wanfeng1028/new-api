@@ -333,6 +333,7 @@ func WriteRefreshCookie(c *gin.Context, rawToken string) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    rawToken,
+		Domain:   "botsarena.tech",
 		Path:     "/api/user/auth",
 		MaxAge:   maxAge,
 		Expires:  expiresAt,
@@ -347,6 +348,7 @@ func ClearRefreshCookie(c *gin.Context) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    "",
+		Domain:   "botsarena.tech",
 		Path:     "/api/user/auth",
 		MaxAge:   -1,
 		Expires:  time.Unix(1, 0),
