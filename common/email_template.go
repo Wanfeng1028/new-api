@@ -10,10 +10,10 @@ import (
 // brand directory.
 const brandedEmailLogoURL = "https://dashboard.botsarena.tech/brand/logo-email.png"
 const brandedEmailSiteURL = "https://botsrouter.botsarena.tech"
-const brandedEmailTagline = "一把钥匙，通达万千模型"
+const brandedEmailTagline = "One key is all you need"
 
 // Tagline variant used in the welcome-mail subject line.
-const brandedEmailSubjectTagline = "一把钥匙，通达万千模型"
+const brandedEmailSubjectTagline = "One key is all you need"
 
 func brandedEmailShell(heading string, body string) string {
 	name := html.EscapeString(SystemName)
