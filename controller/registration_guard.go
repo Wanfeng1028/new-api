@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,32 @@ const (
 	regMarkCookieTTL  = 31536000 // one year, in seconds
 	regUserAgentLimit = 512
 )
+
+// NormalizeEmailForRegistration canonicalizes an address for every
+// registration-time decision (occupancy check, verification-code key,
+// stored value), so a single mailbox cannot mint extra accounts through
+// plus aliases (user+tag@ anywhere) or Gmail dot tricks
+// (u.ser@gmail.com is the same mailbox as user@gmail.com). Steps: lower
+// case; drop the '+' suffix of the local part for every domain; for
+// gmail.com / googlemail.com also drop all dots from the local part and
+// unify the domain to gmail.com. Other domains keep their dots, which
+// are significant there. Non-registration flows (password reset, bound
+// mailbox changes) deliberately do not use this and keep exact matching.
+func NormalizeEmailForRegistration(email string) string {
+	email = strings.ToLower(strings.TrimSpace(email))
+	local, domain, found := strings.Cut(email, "@")
+	if !found {
+		return email
+	}
+	if plus := strings.IndexByte(local, '+'); plus >= 0 {
+		local = local[:plus]
+	}
+	if domain == "gmail.com" || domain == "googlemail.com" {
+		local = strings.ReplaceAll(local, ".", "")
+		domain = "gmail.com"
+	}
+	return local + "@" + domain
+}
 
 // registrationClientIP resolves the client address behind the edge:
 // Cloudflare's connecting-IP header wins, then the first X-Forwarded-For
@@ -74,7 +101,12 @@ func checkRegistrationLimit(c *gin.Context) (bool, error) {
 	if err := query.Count(&count).Error; err != nil {
 		return false, err
 	}
-	return count > 0, nil
+	blocked := count > 0
+	if blocked {
+		// BotsRouter fork patch: feed the registration-block alert.
+		common.RecordRegistrationBlock(ip)
+	}
+	return blocked, nil
 }
 
 // setRegMarkCookie plants the long-lived device mark on a successful

@@ -78,6 +78,14 @@ func Login(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
+	// BotsRouter fork patch: per username+IP password lockout (see
+	// common/risk_guard.go). Keyed by pair so an attacker cannot lock
+	// the account owner out from everywhere.
+	clientIP := registrationClientIP(c)
+	if locked, _ := common.LoginLocked(username, clientIP); locked {
+		common.ApiErrorMsg(c, "尝试次数过多，请 15 分钟后再试")
+		return
+	}
 	user := model.User{
 		Username: username,
 		Password: password,
@@ -91,9 +99,17 @@ func Login(c *gin.Context) {
 		case errors.Is(err, model.ErrUserEmptyCredentials):
 			common.ApiErrorT(c, "Invalid parameters")
 		default:
+			common.RecordLoginFailure(username, clientIP)
 			common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
 		}
 		return
+	}
+
+	// BotsRouter fork patch: clear the pair's failure counter and feed
+	// the admin new-IP login alert.
+	common.RecordLoginSuccess(username, clientIP)
+	if user.Role >= common.RoleAdminUser {
+		common.NoteAdminLogin(user.Username, clientIP)
 	}
 
 	setupLogin(&user, nil, c)
@@ -246,7 +262,11 @@ func Register(c *gin.Context) {
 		return
 	}
 	user.Username = strings.TrimSpace(user.Username)
-	user.Email = model.NormalizeEmail(user.Email)
+	// BotsRouter fork patch: registration dedupe works on the canonical
+	// mailbox (plus aliases and Gmail dots collapse, see
+	// registration_guard.go), so the occupancy check, the verification
+	// code key and the stored address below all use the normalized form.
+	user.Email = NormalizeEmailForRegistration(user.Email)
 	if user.Username == "" {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
@@ -1344,6 +1364,8 @@ func TopUp(c *gin.Context) {
 	}
 	quota, err := model.Redeem(req.Key, id)
 	if err != nil {
+		// BotsRouter fork patch: feed the repeated-redemption-failure alert.
+		common.RecordTopUpFailure(id, registrationClientIP(c))
 		// 不向用户暴露兑换失败的细分原因，避免攻击者根据错误类型判断兑换码状态。
 		common.ApiErrorT(c, "Redemption failed, please try again later")
 		logger.LogError(c, common.LogText("failed to redeem key %s for user %d: %s", req.Key, id, err.Error()))

@@ -27,14 +27,14 @@ func brandedEmailShell(heading string, body string) string {
 	b.WriteString(`<tr><td style="padding:26px 36px 0 36px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
 		`<td style="vertical-align:middle;"><img src="` + brandedEmailLogoURL + `" alt="` + name + `" width="76" height="57" style="display:block;"></td>` +
 		`<td style="vertical-align:middle;padding-left:16px;">` +
-		`<div style="font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:24px;font-weight:700;color:#181410;letter-spacing:0.5px;">` + name + `</div>` +
-		`<div style="font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#8A8175;letter-spacing:2px;">` + brandedEmailTagline + `</div>` +
+		`<div style="font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:24px;font-weight:700;color:#181410;letter-spacing:0.5px;">` + name + `</div>` +
+		`<div style="font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#8A8175;letter-spacing:2px;">` + brandedEmailTagline + `</div>` +
 		`</td></tr></table></td></tr>`)
 	b.WriteString(`<tr><td style="padding:22px 36px 0 36px;"><div style="height:3px;background-color:#D9481C;font-size:0;line-height:0;">&nbsp;</div></td></tr>`)
-	b.WriteString(`<tr><td style="padding:26px 36px 28px 36px;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;">` +
+	b.WriteString(`<tr><td style="padding:26px 36px 28px 36px;font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;">` +
 		`<div style="font-size:20px;font-weight:700;color:#181410;">` + html.EscapeString(heading) + `</div>` + body +
 		`</td></tr>`)
-	b.WriteString(`<tr><td style="padding:0 36px;"><div style="border-top:1px solid #E7DFD2;padding:16px 0 22px 0;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#B4AB9C;text-align:center;">` +
+	b.WriteString(`<tr><td style="padding:0 36px;"><div style="border-top:1px solid #E7DFD2;padding:16px 0 22px 0;font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#B4AB9C;text-align:center;">` +
 		name + ` · <a href="` + brandedEmailSiteURL + `" style="color:#B4AB9C;text-decoration:underline;">botsrouter.botsarena.tech</a><br>` +
 		`<span style="color:#C9C0B0;">这封邮件由系统自动发送，请勿直接回复</span></div></td></tr>`)
 	b.WriteString(`</table></td></tr></table></body></html>`)
@@ -53,9 +53,11 @@ func RenderCodeEmail(heading string, intro string, code string, note string) str
 }
 
 // RenderNoticeEmail renders a mail whose body is ready-made HTML
-// paragraphs (password reset, security notices); links get the brand color.
+// paragraphs (password reset, security notices); plain links get the
+// brand color. Anchors that already carry a style attribute (such as
+// the capsule buttons) are left untouched.
 func RenderNoticeEmail(heading string, bodyHTML string) string {
-	bodyHTML = strings.ReplaceAll(bodyHTML, "<a ", `<a style="color:#D9481C;" `)
+	bodyHTML = strings.ReplaceAll(bodyHTML, "<a href=", `<a style="color:#D9481C;" href=`)
 	body := `<div style="margin-top:6px;font-size:15px;line-height:1.7;color:#3D362C;">` + bodyHTML + `</div>`
 	return brandedEmailShell(heading, body)
 }

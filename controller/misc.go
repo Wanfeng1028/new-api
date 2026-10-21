@@ -222,6 +222,12 @@ func SendEmailVerification(c *gin.Context) {
 		writeSecurityOperationError(c, err)
 		return
 	}
+	// BotsRouter fork patch: this endpoint issues registration codes, so
+	// the address is canonicalized first (plus aliases / Gmail dots
+	// collapse to the base mailbox). The occupancy refusal, the code key
+	// and the delivery address all use the normalized form, matching
+	// what Register later verifies and stores.
+	email = NormalizeEmailForRegistration(email)
 
 	if model.IsEmailAlreadyTaken(email) {
 		common.ApiErrorT(c, "Email address is already in use")
@@ -229,14 +235,15 @@ func SendEmailVerification(c *gin.Context) {
 	}
 	code := common.GenerateVerificationCode(6)
 	common.RegisterVerificationCodeWithKey(email, code, common.EmailVerificationPurpose)
-	// The address may not belong to an account yet, so the mail follows the
-	// request language.
-	systemName := map[string]any{"SystemName": common.SystemName}
-	subject := i18n.T(c, i18n.MsgEmailVerificationSubject, systemName)
+	// BotsRouter fork patch: brand mail copy is fixed Chinese (same set
+	// as the welcome mail) instead of the upstream request-language i18n
+	// template. Only the wording changes; code generation, storage and
+	// verification logic are untouched.
+	subject := common.SystemName + " 邮箱验证码"
 	content := common.RenderCodeEmail(subject,
-		i18n.T(c, i18n.MsgEmailVerificationGreeting, systemName),
+		"您正在为 "+common.SystemName+" 验证邮箱地址，请在页面中输入以下验证码完成验证：",
 		code,
-		i18n.T(c, i18n.MsgEmailVerificationValidity, map[string]any{"Minutes": common.VerificationValidMinutes}))
+		fmt.Sprintf("验证码 %d 分钟内有效。如非本人操作，请忽略这封邮件。", common.VerificationValidMinutes))
 	err = common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)
@@ -255,25 +262,23 @@ func SendPasswordResetEmail(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	if user, err := model.GetUniqueUserByEmail(email); err == nil {
+	if _, err := model.GetUniqueUserByEmail(email); err == nil {
 		code := common.GenerateVerificationCode(0)
 		common.RegisterVerificationCodeWithKey(email, code, common.PasswordResetPurpose)
 		link := fmt.Sprintf("%s/user/reset?email=%s&token=%s", system_setting.ServerAddress, email, code)
-		lang := user.GetSetting().Language
-		if lang == "" {
-			lang = i18n.StatedLang(c)
-		}
-		systemName := map[string]any{"SystemName": common.SystemName}
-		linkParams := map[string]any{"Link": link}
-		subject := i18n.Translate(lang, i18n.MsgEmailPasswordResetSubject, systemName)
+		// BotsRouter fork patch: fixed Chinese brand copy with the reset
+		// link as a capsule button (same wording-only scope as the
+		// verification mail above).
+		subject := common.SystemName + " 密码重置"
 		content := common.RenderNoticeEmail(subject, fmt.Sprintf("<p>%s</p>"+
-			"<p>%s</p>"+
-			"<p>%s </p>"+
+			"<p style=\"text-align:center;margin:22px 0;\"><a style=\"display:inline-block;background-color:#D9481C;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none;padding:12px 30px;border-radius:999px;border:2px solid #D9481C;\" href=\"%s\">重置密码</a></p>"+
+			"<p>%s<br>%s</p>"+
 			"<p>%s</p>",
-			i18n.Translate(lang, i18n.MsgEmailPasswordResetGreeting, systemName),
-			i18n.Translate(lang, i18n.MsgEmailPasswordResetLink, linkParams),
-			i18n.Translate(lang, i18n.MsgEmailPasswordResetLinkFallback, linkParams),
-			i18n.Translate(lang, i18n.MsgEmailPasswordResetValidity, map[string]any{"Minutes": common.VerificationValidMinutes})))
+			"您正在重置 "+common.SystemName+" 的登录密码，请点击下方按钮继续：",
+			link,
+			"若按钮无法点击，请复制以下链接到浏览器中打开：",
+			link,
+			fmt.Sprintf("链接 %d 分钟内有效。如非本人操作，请忽略这封邮件，您的密码不会被修改。", common.VerificationValidMinutes)))
 		err := common.SendEmail(subject, email, content)
 		if err != nil {
 			logger.LogError(c.Request.Context(), common.LogText("failed to send password reset email to %s: %s", email, err.Error()))

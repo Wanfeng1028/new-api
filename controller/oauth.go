@@ -510,7 +510,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		user.DisplayName = provider.GetName() + " User"
 	}
 	if oauthUser.Email != "" {
-		user.Email = model.NormalizeEmail(oauthUser.Email)
+		// BotsRouter fork patch: same registration canonicalization as
+		// password sign-up, so an IdP address cannot bypass the mailbox
+		// dedupe through plus aliases or Gmail dots.
+		user.Email = NormalizeEmailForRegistration(oauthUser.Email)
 		if err := model.EnsureEmailAvailable(user.Email, 0); err != nil {
 			if errors.Is(err, model.ErrEmailAlreadyTaken) {
 				return nil, nil, &OAuthEmailAlreadyTakenError{}
