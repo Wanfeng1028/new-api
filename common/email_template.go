@@ -10,7 +10,10 @@ import (
 // brand directory.
 const brandedEmailLogoURL = "https://dashboard.botsarena.tech/brand/logo-email.png"
 const brandedEmailSiteURL = "https://botsrouter.botsarena.tech"
-const brandedEmailTagline = "你的无限 TOKEN 工厂！"
+const brandedEmailTagline = "一把钥匙，让你的智能体通向所有模型"
+
+// Shortened tagline variant used in the welcome-mail subject line.
+const brandedEmailSubjectTagline = "一把钥匙通向所有模型"
 
 func brandedEmailShell(heading string, body string) string {
 	name := html.EscapeString(SystemName)
@@ -62,7 +65,7 @@ func RenderNoticeEmail(heading string, bodyHTML string) string {
 // buttons linking to the console and the integration docs. It returns the
 // subject and the full HTML body.
 func RenderWelcomeEmail(username string) (string, string) {
-	subject := "欢迎加入 " + SystemName + "，" + brandedEmailTagline
+	subject := "欢迎加入 " + SystemName + "，" + brandedEmailSubjectTagline
 	step := func(num string, title string, desc string) string {
 		return `<tr><td style="padding:7px 0;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
 			`<td style="vertical-align:top;"><span style="display:inline-block;width:26px;height:26px;line-height:26px;border-radius:50%;background-color:#D9481C;color:#FFFFFF;font-size:14px;font-weight:700;text-align:center;">` + num + `</span></td>` +
