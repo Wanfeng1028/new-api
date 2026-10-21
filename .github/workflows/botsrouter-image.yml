@@ -1,21 +1,40 @@
 name: botsrouter-image
 
 on:
+  push:
+    branches: [botsrouter]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build:
+  build-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - name: Build image
-        run: docker build -t botsrouter/new-api:latest .
-      - name: Save image
-        run: docker save botsrouter/new-api:latest | gzip > new-api-image.tar.gz
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          name: new-api-image
-          path: new-api-image.tar.gz
-          retention-days: 3
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/wanfeng1028/new-api:latest
+            ghcr.io/wanfeng1028/new-api:sha-${{ github.sha }}
+      - name: Deploy to Japan server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf "%s\n" "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "20.222.15.177 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA7LgAl2pZWavVpbvYgU6Ng/iSwmxO4Au96/+sKCHRXY" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o ConnectTimeout=30 azureuser@20.222.15.177 deploy
