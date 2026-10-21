@@ -319,6 +319,9 @@ func Register(c *gin.Context) {
 	}
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
+	// BotsRouter fork patch: mint the device mark; only its hash is
+	// stored on the row, the nonce goes to the browser cookie below.
+	regMarkNonce, regMarkHash := mintRegMark()
 	cleanUser := model.User{
 		Username:    user.Username,
 		Password:    user.Password,
@@ -327,6 +330,7 @@ func Register(c *gin.Context) {
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
 		RegIP:       registrationClientIP(c),
 		RegUA:       registrationUserAgent(c),
+		RegMark:     regMarkHash,
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -349,7 +353,7 @@ func Register(c *gin.Context) {
 
 	// BotsRouter fork patch: plant the device mark used by the
 	// one-per-network-and-device-per-year policy.
-	setRegMarkCookie(c)
+	setRegMarkCookie(c, regMarkNonce)
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
 		key, err := common.GenerateKey()

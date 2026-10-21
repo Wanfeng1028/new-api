@@ -114,6 +114,7 @@ type User struct {
 	// per-network-and-device-per-year policy (see controller/registration_guard.go).
 	RegIP            string                     `json:"-" gorm:"type:varchar(64);column:reg_ip;index"`
 	RegUA            string                     `json:"-" gorm:"type:varchar(512);column:reg_ua"`
+	RegMark          string                     `json:"-" gorm:"type:varchar(64);column:reg_mark;index"`
 	AuthVersion      int64                      `json:"-" gorm:"type:bigint;not null;default:1;column:auth_version"`
 	AdminPermissions map[string]map[string]bool `json:"admin_permissions,omitempty" gorm:"-:all"`
 }

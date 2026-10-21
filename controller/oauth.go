@@ -523,9 +523,13 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	}
 	user.Role = common.RoleCommonUser
 	user.Status = common.UserStatusEnabled
-	// BotsRouter fork patch: record the registration fingerprint.
+	// BotsRouter fork patch: record the registration fingerprint and
+	// the device-mark hash (the nonce itself is planted as a cookie
+	// further below, on the session-issuing response).
+	regMarkNonce, regMarkHash := mintRegMark()
 	user.RegIP = registrationClientIP(c)
 	user.RegUA = registrationUserAgent(c)
+	user.RegMark = regMarkHash
 
 	// Handle affiliate code
 	inviterId := 0
@@ -593,7 +597,7 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 
 	// BotsRouter fork patch: plant the device mark on this response, which
 	// is also the one that issues the login session to the browser.
-	setRegMarkCookie(c)
+	setRegMarkCookie(c, regMarkNonce)
 
 	// BotsRouter fork patch: greet the newly created user by email
 	// (async, best effort; skipped when the provider gave no address).

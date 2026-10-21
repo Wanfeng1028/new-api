@@ -2,6 +2,7 @@ package controller
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -15,12 +16,13 @@ import (
 
 // BotsRouter fork patch: one-account-per-network-and-device-per-year policy
 // for self-service registration. Both public creation paths (password
-// registration and OAuth sign-up) record the client IP / User-Agent on the
-// user row and consult checkRegistrationLimit before creating an account.
-// The test is deliberately "wide": a registration is refused only when the
-// same network (IP) shows up again within a year together with the same
-// device, where device identity is either the same User-Agent or the
-// reg_mark cookie planted on the earlier registration. Admin-created
+// registration and OAuth sign-up) record the client IP / User-Agent and a
+// device-mark hash on the user row and consult checkRegistrationLimit
+// before creating an account. A registration is refused when, inside the
+// last year, either (a) the reg_mark cookie presented by the browser
+// hashes to a mark stored by an earlier registration (same device), or
+// (b) an earlier account shares both the client IP and a non-empty
+// User-Agent (same network and device fingerprint). Admin-created
 // accounts never pass through here.
 
 const (
@@ -84,43 +86,73 @@ func registrationUserAgent(c *gin.Context) string {
 }
 
 // checkRegistrationLimit reports whether this request must be refused
-// under the one-per-network-and-device-per-year policy.
+// under the one-per-network-and-device-per-year policy: rule (a) matches
+// the device mark, rule (b) matches network plus User-Agent.
 func checkRegistrationLimit(c *gin.Context) (bool, error) {
+	since := time.Now().Unix() - regLimitWindow
 	ip := registrationClientIP(c)
-	if ip == "" {
-		return false, nil
+	// Rule (a): the browser presents a reg_mark cookie minted by an
+	// earlier registration; the users table stores only its hash.
+	if mark, err := c.Cookie(regMarkCookieName); err == nil && mark != "" {
+		var count int64
+		if err := model.DB.Model(&model.User{}).
+			Where("reg_mark = ? AND created_at >= ?", hashRegMark(mark), since).
+			Count(&count).Error; err != nil {
+			return false, err
+		}
+		if count > 0 {
+			common.RecordRegistrationBlock(ip)
+			return true, nil
+		}
 	}
-	query := model.DB.Model(&model.User{}).
-		Where("reg_ip = ? AND created_at >= ?", ip, time.Now().Unix()-regLimitWindow)
-	if _, err := c.Cookie(regMarkCookieName); err != nil {
-		// No device mark from an earlier registration: the same network
-		// only counts together with the same User-Agent.
-		query = query.Where("reg_ua = ?", registrationUserAgent(c))
+	// Rule (b): same network and same device fingerprint; an empty
+	// User-Agent proves nothing, so both parts must be present.
+	ua := registrationUserAgent(c)
+	if ip != "" && ua != "" {
+		var count int64
+		if err := model.DB.Model(&model.User{}).
+			Where("reg_ip = ? AND reg_ua = ? AND created_at >= ?", ip, ua, since).
+			Count(&count).Error; err != nil {
+			return false, err
+		}
+		if count > 0 {
+			common.RecordRegistrationBlock(ip)
+			return true, nil
+		}
 	}
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
-		return false, err
+	return false, nil
+}
+
+// mintRegMark creates a fresh device-mark nonce and its stored form.
+// The browser carries the nonce in the reg_mark cookie; the users table
+// keeps only the SHA-256 hash, so a database leak does not hand out
+// usable device marks. A crypto failure yields empty strings, which
+// simply leaves the new account without a mark.
+func mintRegMark() (nonce string, hash string) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", ""
 	}
-	blocked := count > 0
-	if blocked {
-		// BotsRouter fork patch: feed the registration-block alert.
-		common.RecordRegistrationBlock(ip)
-	}
-	return blocked, nil
+	nonce = hex.EncodeToString(buf)
+	return nonce, hashRegMark(nonce)
+}
+
+func hashRegMark(nonce string) string {
+	sum := sha256.Sum256([]byte(nonce))
+	return hex.EncodeToString(sum[:])
 }
 
 // setRegMarkCookie plants the long-lived device mark on a successful
-// registration response. The value is a random nonce; only its presence
-// matters to checkRegistrationLimit. A failure to mint the nonce simply
+// registration response. The caller mints the nonce (see mintRegMark)
+// so it can store the matching hash on the new user row; an empty nonce
 // skips the mark and never fails the registration itself.
-func setRegMarkCookie(c *gin.Context) {
-	nonce := make([]byte, 32)
-	if _, err := rand.Read(nonce); err != nil {
+func setRegMarkCookie(c *gin.Context, nonce string) {
+	if nonce == "" {
 		return
 	}
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     regMarkCookieName,
-		Value:    hex.EncodeToString(nonce),
+		Value:    nonce,
 		Domain:   "botsarena.tech",
 		Path:     "/",
 		MaxAge:   regMarkCookieTTL,
