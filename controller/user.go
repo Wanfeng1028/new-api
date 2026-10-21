@@ -287,6 +287,16 @@ func Register(c *gin.Context) {
 		common.ApiErrorT(c, "Username already exists or has been deleted")
 		return
 	}
+	// BotsRouter fork patch: enforce one account per network and device
+	// per year (see registration_guard.go).
+	if limited, err := checkRegistrationLimit(c); err != nil {
+		common.ApiErrorT(c, "Database error, please contact the administrator")
+		common.SysLog(common.LogText("checkRegistrationLimit error: %v", err))
+		return
+	} else if limited {
+		common.ApiErrorMsg(c, regLimitMessage)
+		return
+	}
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
@@ -295,6 +305,8 @@ func Register(c *gin.Context) {
 		DisplayName: user.Username,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+		RegIP:       registrationClientIP(c),
+		RegUA:       registrationUserAgent(c),
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -314,6 +326,10 @@ func Register(c *gin.Context) {
 		common.ApiErrorT(c, "User registration failed or user ID retrieval failed")
 		return
 	}
+
+	// BotsRouter fork patch: plant the device mark used by the
+	// one-per-network-and-device-per-year policy.
+	setRegMarkCookie(c)
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
 		key, err := common.GenerateKey()

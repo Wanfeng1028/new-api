@@ -323,6 +323,8 @@ func handleOAuthLogin(c *gin.Context, provider oauth.Provider, oauthUser *oauth.
 			common.ApiErrorT(c, "User has been deleted")
 		case *OAuthRegistrationDisabledError:
 			common.ApiErrorT(c, "New user registration has been disabled by administrator")
+		case *OAuthRegistrationLimitedError:
+			common.ApiErrorMsg(c, regLimitMessage)
 		case *OAuthEmailAlreadyTakenError:
 			common.ApiErrorT(c, "Email address is already in use")
 		case *OAuthLegacyBindingNotConfirmedError:
@@ -480,6 +482,14 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		return nil, nil, &OAuthRegistrationDisabledError{}
 	}
 
+	// BotsRouter fork patch: enforce one account per network and device
+	// per year (see registration_guard.go).
+	if limited, err := checkRegistrationLimit(c); err != nil {
+		return nil, nil, err
+	} else if limited {
+		return nil, nil, &OAuthRegistrationLimitedError{}
+	}
+
 	// Set up new user
 	user.Username = provider.GetProviderPrefix() + strconv.Itoa(model.GetMaxUserId()+1)
 
@@ -510,6 +520,9 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	}
 	user.Role = common.RoleCommonUser
 	user.Status = common.UserStatusEnabled
+	// BotsRouter fork patch: record the registration fingerprint.
+	user.RegIP = registrationClientIP(c)
+	user.RegUA = registrationUserAgent(c)
 
 	// Handle affiliate code
 	inviterId := 0
@@ -575,6 +588,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		user.FinalizeOAuthUserCreation(inviterId)
 	}
 
+	// BotsRouter fork patch: plant the device mark on this response, which
+	// is also the one that issues the login session to the browser.
+	setRegMarkCookie(c)
+
 	// BotsRouter fork patch: greet the newly created user by email
 	// (async, best effort; skipped when the provider gave no address).
 	sendWelcomeEmailAsync(user.Username, user.Email)
@@ -603,6 +620,14 @@ type OAuthRegistrationDisabledError struct{}
 
 func (e *OAuthRegistrationDisabledError) Error() string {
 	return "registration is disabled"
+}
+
+// OAuthRegistrationLimitedError reports a sign-up refused by the BotsRouter
+// one-account-per-network-and-device-per-year policy.
+type OAuthRegistrationLimitedError struct{}
+
+func (e *OAuthRegistrationLimitedError) Error() string {
+	return "registration limited"
 }
 
 type OAuthEmailAlreadyTakenError struct{}
