@@ -95,9 +95,15 @@ export function useTopNavLinks(): TopNavLink[] {
     }
   }
 
-  // About
+  // About. BotsRouter fork patch: the panel's built-in about page is
+  // upstream project content, so this links to the official website's
+  // about section instead.
   if (modules?.about !== false) {
-    links.push({ title: t('About'), href: '/about' })
+    links.push({
+      title: t('About'),
+      href: 'https://botsrouter.botsarena.tech/#/about',
+      external: true,
+    })
   }
 
   return links

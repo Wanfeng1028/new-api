@@ -745,3 +745,19 @@ For commercial licensing, please contact support@quantumnous.com
     display: none;
   }
 }
+
+/* BotsRouter fork patch: capsule controls and ink-outlined cards, matching
+ * the official website (botsrouter.botsarena.tech). Deliberately unlayered
+ * so these win over Tailwind utility layers without !important. */
+[data-slot='button'],
+[data-slot='input'] {
+  border-radius: 999px;
+}
+
+[data-slot='card'] {
+  border: 1.5px solid #181410;
+}
+
+.dark [data-slot='card'] {
+  border-color: #8a8175;
+}

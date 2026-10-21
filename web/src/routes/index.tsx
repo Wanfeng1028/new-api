@@ -16,10 +16,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { Home } from '@/features/home'
-
+// BotsRouter fork patch: the panel ships no marketing landing page. The
+// root route sends everyone straight to the console dashboard; the public
+// face of the product is the official website (botsrouter.botsarena.tech).
+// The upstream Home feature stays in the tree (unreferenced) to keep the
+// fork diff minimal.
 export const Route = createFileRoute('/')({
-  component: Home,
+  beforeLoad: () => {
+    throw redirect({ to: '/dashboard' })
+  },
 })
