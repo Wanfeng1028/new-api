@@ -26,7 +26,6 @@ import {
 } from 'react'
 
 import {
-  readThemePreference,
   THEME_STORAGE_KEYS,
   writeThemePreference,
 } from '@/lib/theme-storage'
@@ -34,8 +33,10 @@ import {
 type Theme = 'dark' | 'light' | 'system'
 type ResolvedTheme = Exclude<Theme, 'system'>
 
-const DEFAULT_THEME = 'system'
-const THEMES = new Set<Theme>(['dark', 'light', 'system'])
+// BotsRouter fork patch: the console is light-only. DEFAULT_THEME is light
+// and ThemeProvider below pins every surface to it, so a saved dark or
+// system preference can never take effect.
+const DEFAULT_THEME: Theme = 'light'
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -61,60 +62,36 @@ const initialState: ThemeProviderState = {
 
 const ThemeContext = createContext<ThemeProviderState>(initialState)
 
-function getSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
-}
-
-function resolveTheme(theme: Theme): ResolvedTheme {
-  return theme === 'system' ? getSystemTheme() : theme
-}
-
 export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEYS.mode,
   ...props
 }: ThemeProviderProps) {
-  const [theme, _setTheme] = useState<Theme>(() =>
-    readThemePreference(storageKey, THEMES, defaultTheme)
-  )
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(theme)
-  )
+  // BotsRouter fork patch: light-only. The upstream context API shape is
+  // kept so no consumer changes, but the effective theme is pinned to
+  // light: the stored preference is never read back, and
+  // setTheme/resetTheme persist 'light' so a stale dark preference
+  // normalizes instead of resurfacing.
+  const [theme] = useState<Theme>('light')
+  const [resolvedTheme] = useState<ResolvedTheme>('light')
 
   useEffect(() => {
     const root = window.document.documentElement
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const applyTheme = () => {
-      const nextResolvedTheme = theme === 'system' ? getSystemTheme() : theme
-      root.classList.remove('light', 'dark')
-      root.classList.add(nextResolvedTheme)
-      setResolvedTheme(nextResolvedTheme)
-    }
-
-    applyTheme()
-
-    mediaQuery.addEventListener('change', applyTheme)
-
-    return () => mediaQuery.removeEventListener('change', applyTheme)
-  }, [theme])
+    root.classList.remove('dark')
+    root.classList.add('light')
+  }, [])
 
   const setTheme = useCallback(
-    (theme: Theme) => {
-      writeThemePreference(storageKey, theme)
-      _setTheme(theme)
+    (_theme: Theme) => {
+      writeThemePreference(storageKey, 'light')
     },
     [storageKey]
   )
 
   const resetTheme = useCallback(() => {
-    writeThemePreference(storageKey, null)
-    _setTheme(defaultTheme)
-  }, [defaultTheme, storageKey])
+    writeThemePreference(storageKey, 'light')
+  }, [storageKey])
 
   const contextValue = useMemo(
     () => ({

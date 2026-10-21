@@ -1,0 +1,1 @@
+Liberation Serif (SIL Open Font License 1.1) — metric-compatible with Times New Roman, self-hosted so Latin text renders as a Times-style serif on every device.

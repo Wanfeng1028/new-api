@@ -761,3 +761,15 @@ For commercial licensing, please contact support@quantumnous.com
 .dark [data-slot='card'] {
   border-color: #8a8175;
 }
+
+/* BotsRouter fork patch (L10): pin the UI font stack on body with
+ * !important so a component-library default can never override it — the
+ * official website lost exactly this fight to Semi's Inter stack before
+ * resorting to a self-hosted font plus a top-priority rule. Elements that
+ * take the `font-sans` utility resolve through --font-ui-sans in
+ * theme.css, which leads with the same BR Serif stack. */
+body {
+  font-family:
+    'BR Serif', 'Times New Roman', Times, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important;
+}

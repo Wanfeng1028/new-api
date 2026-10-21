@@ -123,7 +123,7 @@ describe('theme preference persistence', () => {
 
     render(<ThemeFixture />)
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('system')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.documentElement).toHaveClass('light')
     expect(document.body).not.toHaveAttribute('data-theme-preset')
     expect(document.body).toHaveAttribute('data-theme-font', 'system')
@@ -140,8 +140,10 @@ describe('theme preference persistence', () => {
     first.unmount()
     render(<ThemeFixture />)
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('dark')
-    expect(document.documentElement).toHaveClass('dark')
+    // Light-only: the mode stays light even though Customize requested
+    // dark; every other preference restores as saved.
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
+    expect(document.documentElement).toHaveClass('light')
     expect(document.body).toHaveAttribute('data-theme-preset', 'rose-garden')
     expect(document.body).toHaveAttribute('data-theme-font', 'serif')
     expect(document.body).toHaveAttribute('data-theme-radius', 'lg')
@@ -150,7 +152,11 @@ describe('theme preference persistence', () => {
       'data-theme-content-layout',
       'centered'
     )
-    for (const [key, value] of Object.entries(savedPreferences)) {
+    for (const [key, value] of Object.entries({
+      ...savedPreferences,
+      // setTheme('dark') is coerced and persisted as the pinned light mode.
+      'newapi:theme:v1:mode': 'light',
+    })) {
       expect(localStorage.getItem(key)).toBe(value)
     }
     expect(document.cookie).toBe('')
@@ -169,7 +175,7 @@ describe('theme preference persistence', () => {
     first.unmount()
     render(<ThemeFixture />)
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('system')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.documentElement).toHaveClass('light')
     expect(document.body).not.toHaveAttribute('data-theme-preset')
     expect(document.body).toHaveAttribute('data-theme-font', 'system')
@@ -177,8 +183,12 @@ describe('theme preference persistence', () => {
     expect(document.body).not.toHaveAttribute('data-theme-scale')
     expect(document.body).toHaveAttribute('data-theme-content-layout', 'full')
     for (const key of Object.keys(savedPreferences)) {
+      if (key === 'newapi:theme:v1:mode') continue
       expect(localStorage.getItem(key)).toBeNull()
     }
+    // Light-only: resetTheme persists the pinned light mode instead of
+    // clearing the key.
+    expect(localStorage.getItem('newapi:theme:v1:mode')).toBe('light')
     expect(localStorage.getItem('unrelated-preference')).toBe('keep')
     expect(document.cookie).toContain('theme_preset=ocean-breeze')
   })
@@ -192,7 +202,7 @@ describe('theme preference persistence', () => {
 
       render(<ThemeFixture />)
 
-      expect(screen.getByLabelText('Theme mode')).toHaveTextContent('system')
+      expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
       expect(document.body).not.toHaveAttribute('data-theme-preset')
       expect(document.body).toHaveAttribute('data-theme-font', 'system')
       expect(document.body).not.toHaveAttribute('data-theme-radius')
@@ -208,7 +218,7 @@ describe('theme preference persistence', () => {
 
     render(<ThemeFixture />)
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('system')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.body).not.toHaveAttribute('data-theme-preset')
   })
 
@@ -224,12 +234,12 @@ describe('theme preference persistence', () => {
 
     await user.click(screen.getByRole('button', { name: 'Customize' }))
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('dark')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.body).toHaveAttribute('data-theme-preset', 'rose-garden')
 
     await user.click(screen.getByRole('button', { name: 'Reset' }))
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('system')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.body).not.toHaveAttribute('data-theme-preset')
   })
 
@@ -243,7 +253,7 @@ describe('theme preference persistence', () => {
     initializeFrontendCache()
     render(<ThemeFixture />)
 
-    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('dark')
+    expect(screen.getByLabelText('Theme mode')).toHaveTextContent('light')
     expect(document.body).toHaveAttribute('data-theme-preset', 'rose-garden')
     for (const [key, value] of Object.entries(savedPreferences)) {
       expect(localStorage.getItem(key)).toBe(value)

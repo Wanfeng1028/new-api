@@ -56,14 +56,14 @@ afterEach(() => {
 })
 
 describe('index.html theme boot script', () => {
-  it('applies the saved dark preference to html before React mounts', () => {
+  it('ignores a saved dark preference and applies light (light-only console)', () => {
     mockSystemDarkMode(false)
     localStorage.setItem(THEME_STORAGE_KEYS.mode, 'dark')
 
     runBootScript()
 
-    expect(document.documentElement).toHaveClass('dark')
-    expect(document.documentElement).not.toHaveClass('light')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
   })
 
   it('applies the saved light preference even when the system is dark', () => {
@@ -76,12 +76,13 @@ describe('index.html theme boot script', () => {
     expect(document.documentElement).not.toHaveClass('dark')
   })
 
-  it('follows the system dark mode when no preference is saved', () => {
+  it('applies light even when the system prefers dark and no preference is saved', () => {
     mockSystemDarkMode(true)
 
     runBootScript()
 
-    expect(document.documentElement).toHaveClass('dark')
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
   })
 
   it('follows the system light mode when the saved value is invalid', () => {

@@ -16,6 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+/* BotsRouter fork patch: the BR Serif @font-face declarations live in
+ * index.html (inline <style>) rather than here — Rsbuild's CSS pipeline
+ * resolves url() as module requests, while the self-hosted font files in
+ * public/fonts must be referenced by their literal served path. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -101,10 +105,11 @@ For commercial licensing, please contact support@quantumnous.com
   --app-rev: '2k6e8r7p';
   /* Auto starts with the browser font, including before JS applies the
    * saved preference. Explicit Sans selects Public Sans in theme-presets.css. */
-  /* BotsRouter fork patch: Latin glyphs render in Times New Roman (the
-   * brand face shared with the official website and system mail); CJK
-   * glyphs fall through to the platform Chinese sans stack. */
-  --font-ui-sans: "Times New Roman", Times, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* BotsRouter fork patch: Latin glyphs render in BR Serif (self-hosted
+   * Liberation Serif, metric-compatible with Times New Roman — the brand
+   * face shared with the official website and system mail); CJK glyphs
+   * fall through to the platform Chinese sans stack. */
+  --font-ui-sans: "BR Serif", "Times New Roman", Times, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-body: var(--font-ui-sans);
   --background: #FAF7F1;
   --foreground: #181410;

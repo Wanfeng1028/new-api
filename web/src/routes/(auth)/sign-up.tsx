@@ -16,19 +16,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { SignUp } from '@/features/auth/sign-up'
-import { useAuthStore } from '@/stores/auth-store'
 
 export const Route = createFileRoute('/(auth)/sign-up')({
   component: SignUp,
   beforeLoad: async () => {
-    const { auth } = useAuthStore.getState()
-
-    // 如果已经有用户信息，说明已登录，注册页对其无意义，跳转到 dashboard
-    if (auth.user) {
-      throw redirect({ to: '/dashboard' })
-    }
+    // BotsRouter fork patch: the panel's built-in sign-up page is retired,
+    // mirroring sign-in. Registration happens on the official website;
+    // send the browser there with a full-page navigation instead of
+    // rendering the built-in form.
+    window.location.replace(
+      'https://botsrouter.botsarena.tech/#/login?mode=register'
+    )
+    // The browser is leaving; keep this route pending so the built-in
+    // form never mounts while the navigation is in flight.
+    await new Promise<never>(() => {})
   },
 })

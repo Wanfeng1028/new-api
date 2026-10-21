@@ -16,13 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
 import { SignIn } from '@/features/auth/sign-in'
-import { resolveAuthentication } from '@/lib/auth-session'
-import { useAuthStore } from '@/stores/auth-store'
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
@@ -31,19 +28,18 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/(auth)/sign-in')({
   component: SignIn,
   validateSearch: searchSchema,
-  beforeLoad: async ({ search }) => {
-    // 根 guard 可能因为没有会话提示而跳过了 refresh。此处必须回源确认，
-    // 否则持有有效 Refresh Cookie 的用户会被要求重新输入密码。
-    await resolveAuthentication()
-
-    const { auth } = useAuthStore.getState()
-
-    // 如果已经有用户信息，说明已登录
-    if (auth.user) {
-      const target =
-        sanitizeAuthRedirect(search?.redirect, window.location.origin) ??
-        '/dashboard'
-      throw redirect({ href: target, replace: true })
-    }
+  beforeLoad: async () => {
+    // BotsRouter fork patch: the panel's built-in sign-in page is retired.
+    // Every unauthenticated flow lands here — sign-out, the http client's
+    // session-expiry replace, legacy /login links — so send the browser
+    // to the official website login with a full-page navigation instead
+    // of rendering the built-in form. (Local 127.0.0.1 acceptance hits the
+    // same jump; the website login bridges back into this console under
+    // the same account system.) OAuth callbacks live under /oauth/* and
+    // are unaffected.
+    window.location.replace('https://botsrouter.botsarena.tech/#/login')
+    // The browser is leaving; keep this route pending so the built-in
+    // form never mounts while the navigation is in flight.
+    await new Promise<never>(() => {})
   },
 })

@@ -14,23 +14,52 @@
     />
 
     <meta name="theme-color" content="#fff" />
-    <!-- Resolve the theme before first paint so the page never flashes light
-         and one-shot detectors (e.g. Dark Reader) see the real theme.
-         Keep in sync with ThemeProvider and THEME_STORAGE_KEYS.mode. -->
+    <!-- BotsRouter: the console is light-only. Pin the light class before
+         first paint; a saved dark/system preference is deliberately
+         ignored. Kept in sync with ThemeProvider, which resolves every
+         theme value to light. -->
     <script>
       ;(function () {
-        var theme = 'system'
-        try {
-          theme = localStorage.getItem('newapi:theme:v1:mode') || 'system'
-        } catch (e) {}
-        if (theme !== 'dark' && theme !== 'light') {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light'
-        }
-        document.documentElement.classList.add(theme)
+        document.documentElement.classList.add('light')
       })()
     </script>
+    <!-- BotsRouter: self-hosted Liberation Serif (metric-compatible with
+         Times New Roman; SIL Open Font License, see fonts/LICENSE.txt in
+         the served root), registered as "BR Serif" — the UI font used
+         across the panel, matching the official website. Declared inline
+         here because Rsbuild's CSS pipeline resolves url() as module
+         requests; the files live in public/fonts and are served at the
+         literal /fonts/ path. -->
+    <style>
+      @font-face {
+        font-family: 'BR Serif';
+        src: url('/fonts/br-serif-regular.woff2') format('woff2');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'BR Serif';
+        src: url('/fonts/br-serif-bold.woff2') format('woff2');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'BR Serif';
+        src: url('/fonts/br-serif-italic.woff2') format('woff2');
+        font-weight: 400;
+        font-style: italic;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'BR Serif';
+        src: url('/fonts/br-serif-bolditalic.woff2') format('woff2');
+        font-weight: 700;
+        font-style: italic;
+        font-display: swap;
+      }
+    </style>
     <!--umami-->
     <!--Google Analytics-->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
