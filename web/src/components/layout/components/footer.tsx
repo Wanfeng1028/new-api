@@ -254,7 +254,10 @@ export function Footer(props: FooterProps) {
         <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
           {/* Brand column */}
           <div className='shrink-0'>
-            <Link to='/' className='group flex items-center gap-2.5'>
+            <a
+              href='https://botsrouter.botsarena.tech'
+              className='group flex items-center gap-2.5'
+            >
               <img
                 src={displayLogo}
                 alt={displayName}
@@ -263,7 +266,7 @@ export function Footer(props: FooterProps) {
               <span className='text-sm font-semibold tracking-tight'>
                 {displayName}
               </span>
-            </Link>
+            </a>
             <p className='text-muted-foreground/60 mt-3 max-w-[200px] text-xs leading-relaxed'>
               {t('Powerful API Management Platform')}
             </p>
