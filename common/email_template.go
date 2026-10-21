@@ -56,3 +56,37 @@ func RenderNoticeEmail(heading string, bodyHTML string) string {
 	body := `<div style="margin-top:6px;font-size:15px;line-height:1.7;color:#3D362C;">` + bodyHTML + `</div>`
 	return brandedEmailShell(heading, body)
 }
+
+// RenderWelcomeEmail renders the registration welcome mail: a greeting, a
+// three-step quick start, the API base URL in a card, and two capsule
+// buttons linking to the console and the integration docs. It returns the
+// subject and the full HTML body.
+func RenderWelcomeEmail(username string) (string, string) {
+	subject := "欢迎加入 " + SystemName + "，" + brandedEmailTagline
+	step := func(num string, title string, desc string) string {
+		return `<tr><td style="padding:7px 0;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>` +
+			`<td style="vertical-align:top;"><span style="display:inline-block;width:26px;height:26px;line-height:26px;border-radius:50%;background-color:#D9481C;color:#FFFFFF;font-size:14px;font-weight:700;text-align:center;">` + num + `</span></td>` +
+			`<td style="vertical-align:top;padding-left:12px;">` +
+			`<div style="font-size:15px;font-weight:700;color:#181410;">` + title + `</div>` +
+			`<div style="font-size:13.5px;line-height:1.7;color:#3D362C;">` + desc + `</div>` +
+			`</td></tr></table></td></tr>`
+	}
+	adminMail := `<a href="mailto:wanfeng572@gmail.com" style="color:#D9481C;">wanfeng572@gmail.com</a>`
+	var b strings.Builder
+	b.WriteString(`<p style="margin:14px 0 0 0;font-size:15px;line-height:1.7;color:#3D362C;">你好，<b>` + html.EscapeString(username) + `</b>！你的账号已经创建成功，欢迎来到 ` + html.EscapeString(SystemName) + `——` + brandedEmailTagline + `</p>`)
+	b.WriteString(`<div style="margin-top:20px;font-size:15px;font-weight:700;color:#181410;">三步快速开始</div>`)
+	b.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">`)
+	b.WriteString(step("1", "联系管理员开通额度", `新账号默认额度为 0，请联系管理员开通后即可使用（管理员邮箱：`+adminMail+`）。`))
+	b.WriteString(step("2", "在控制台创建你的 API 令牌", `进入控制台，在「令牌」页面创建你的 API 令牌，调用接口时用它作为密钥。`))
+	b.WriteString(step("3", "改一个地址即可接入", `把应用里的 API 地址（Base URL）改为下方地址，再填入令牌，即可开始调用：`))
+	b.WriteString(`</table>`)
+	b.WriteString(`<div style="margin-top:10px;background-color:#FAF7F1;border:2px solid #181410;padding:14px 10px;text-align:center;">` +
+		`<span style="font-family:'SF Mono',Consolas,Menlo,monospace;font-size:16px;font-weight:700;color:#181410;">https://api.botsarena.tech/v1</span></div>`)
+	b.WriteString(`<div style="margin-top:22px;text-align:center;">` +
+		`<a href="https://dashboard.botsarena.tech/console" style="display:inline-block;background-color:#D9481C;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none;padding:12px 30px;border-radius:999px;border:2px solid #D9481C;">进入控制台</a>` +
+		`<span style="display:inline-block;width:12px;font-size:0;">&nbsp;</span>` +
+		`<a href="https://botsrouter.botsarena.tech/#/docs" style="display:inline-block;background-color:#FFFFFF;color:#181410;font-size:15px;font-weight:700;text-decoration:none;padding:12px 30px;border-radius:999px;border:2px solid #181410;">接入文档</a>` +
+		`</div>`)
+	b.WriteString(`<p style="margin:20px 0 0 0;font-size:13px;line-height:1.7;color:#8A8175;">使用中遇到任何问题，都可以联系管理员邮箱 ` + adminMail + `。</p>`)
+	return subject, brandedEmailShell("欢迎加入 "+SystemName, b.String())
+}

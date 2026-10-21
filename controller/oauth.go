@@ -575,6 +575,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		user.FinalizeOAuthUserCreation(inviterId)
 	}
 
+	// BotsRouter fork patch: greet the newly created user by email
+	// (async, best effort; skipped when the provider gave no address).
+	sendWelcomeEmailAsync(user.Username, user.Email)
+
 	return user, nil, nil
 }
 

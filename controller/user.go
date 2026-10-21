@@ -214,6 +214,22 @@ func writeLoginResponse(c *gin.Context, user *model.User, bundle *service.AuthBu
 	})
 }
 
+// sendWelcomeEmailAsync delivers the BotsRouter welcome email in the
+// background after a successful registration. It is best effort: an empty
+// address is skipped and send failures are only logged, never blocking or
+// failing the registration itself.
+func sendWelcomeEmailAsync(username string, email string) {
+	if strings.TrimSpace(email) == "" {
+		return
+	}
+	go func() {
+		subject, content := common.RenderWelcomeEmail(username)
+		if err := common.SendEmail(subject, email, content); err != nil {
+			common.SysLog(common.LogText("failed to send welcome email to %s: %s", email, err.Error()))
+		}
+	}()
+}
+
 func Register(c *gin.Context) {
 	if !common.RegisterEnabled {
 		common.ApiErrorT(c, "New user registration has been disabled by administrator")
@@ -327,6 +343,15 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+
+	// BotsRouter fork patch: greet the new user by email (async, best effort).
+	// When email verification is off the address is not stored on the
+	// account, so fall back to the address given in the register request.
+	welcomeEmail := insertedUser.Email
+	if welcomeEmail == "" {
+		welcomeEmail = user.Email
+	}
+	sendWelcomeEmailAsync(insertedUser.Username, welcomeEmail)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
