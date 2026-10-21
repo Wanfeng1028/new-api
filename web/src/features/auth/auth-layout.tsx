@@ -49,7 +49,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         {loading ? (
           <Skeleton className='h-6 w-24' />
         ) : (
-          <h1 className='text-xl font-medium'>{systemName}</h1>
+          <h1 className='text-xl' style={{ fontFamily: "'Fredoka', 'PingFang SC', 'Hiragino Sans GB', sans-serif", fontWeight: 600, letterSpacing: '0.02em' }}>{systemName}</h1>
         )}
       </a>
       <div className='container flex items-center pt-16 sm:pt-0'>

@@ -71,7 +71,7 @@ export function SystemBrand(props: SystemBrandProps) {
             className='size-full rounded-md object-cover'
           />
         </div>
-        <span className='max-w-[12rem] truncate'>{name}</span>
+        <span className='max-w-[12rem] truncate' style={{ fontFamily: "'Fredoka', 'PingFang SC', 'Hiragino Sans GB', sans-serif", fontWeight: 600, letterSpacing: '0.02em' }}>{name}</span>
       </a>
     )
   }
@@ -92,7 +92,7 @@ export function SystemBrand(props: SystemBrandProps) {
             />
           </div>
           <div className='grid flex-1 text-start text-sm leading-tight group-data-[collapsible=icon]:hidden'>
-            <span className='truncate font-semibold'>{name}</span>
+            <span className='truncate' style={{ fontFamily: "'Fredoka', 'PingFang SC', 'Hiragino Sans GB', sans-serif", fontWeight: 600, letterSpacing: '0.02em' }}>{name}</span>
             <span className='truncate text-xs'>{version}</span>
           </div>
         </SidebarMenuButton>
