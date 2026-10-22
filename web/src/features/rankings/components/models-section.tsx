@@ -21,6 +21,7 @@ import { BarChart3, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useUiMode } from '@/context/ui-mode-provider'
 import { useChartTheme } from '@/lib/use-chart-theme'
 import { VCHART_OPTION } from '@/lib/vchart'
 
@@ -36,7 +37,9 @@ const PERIOD_DESCRIPTIONS: Record<RankingPeriod, string> = {
 }
 
 /** BotsRouter fork: warm brand-hue palette for the stacked history chart
- * (signal orange, ink, ochre, clay, taupe) — no blue/purple series. */
+ * (signal orange, ink, ochre, clay, taupe) — no blue/purple series. Only
+ * applied in the privatized UI mode; `newapi` mode leaves the chart on
+ * its default palette, as upstream does. */
 const MODEL_CHART_PALETTE = [
   '#d9481c',
   '#181410',
@@ -71,14 +74,18 @@ type ModelsSectionProps = {
 export function ModelsSection(props: ModelsSectionProps) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
+  const { uiMode } = useUiMode()
+  const privatized = uiMode === 'botsrouter'
+  const lightTextColor = privatized
+    ? 'rgba(24, 20, 16, 0.58)'
+    : 'rgba(15, 23, 42, 0.58)'
+  const lightGridColor = privatized
+    ? 'rgba(24, 20, 16, 0.14)'
+    : 'rgba(15, 23, 42, 0.12)'
   const chartTextColor =
-    resolvedTheme === 'dark'
-      ? 'rgba(255, 255, 255, 0.68)'
-      : 'rgba(24, 20, 16, 0.58)'
+    resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.68)' : lightTextColor
   const chartGridColor =
-    resolvedTheme === 'dark'
-      ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(24, 20, 16, 0.14)'
+    resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : lightGridColor
 
   const colourMap = useMemo(() => {
     const result: Record<string, string> = {}
@@ -114,7 +121,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       yField: 'tokens',
       seriesField: 'model',
       stack: true,
-      color: { specified: colourMap },
+      ...(privatized ? { color: { specified: colourMap } } : {}),
       legends: { visible: false },
       axes: [
         {
@@ -190,7 +197,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [chartGridColor, chartTextColor, colourMap, orderedPoints, t])
+  }, [chartGridColor, chartTextColor, colourMap, orderedPoints, privatized, t])
 
   return (
     <section className='bg-card overflow-hidden rounded-lg border'>

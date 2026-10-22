@@ -26,17 +26,23 @@ import {
 } from 'react'
 
 import {
+  readThemePreference,
   THEME_STORAGE_KEYS,
   writeThemePreference,
 } from '@/lib/theme-storage'
 
+import { useUiMode } from './ui-mode-provider'
+
 type Theme = 'dark' | 'light' | 'system'
 type ResolvedTheme = Exclude<Theme, 'system'>
 
-// BotsRouter fork patch: the console is light-only. DEFAULT_THEME is light
-// and ThemeProvider below pins every surface to it, so a saved dark or
-// system preference can never take effect.
-const DEFAULT_THEME: Theme = 'light'
+// BotsRouter fork: two UI modes (see lib/ui-mode.ts). In the default
+// `botsrouter` mode the console is light-only, as before. In the
+// admin-only `newapi` mode the upstream behaviour applies in full:
+// the default theme is `system` and light / dark / system preferences
+// are stored and honoured.
+const DEFAULT_THEME: Theme = 'system'
+const THEMES = new Set<Theme>(['dark', 'light', 'system'])
 
 type ThemeProviderProps = {
   children: React.ReactNode
@@ -62,46 +68,99 @@ const initialState: ThemeProviderState = {
 
 const ThemeContext = createContext<ThemeProviderState>(initialState)
 
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light'
+}
+
+function resolveTheme(theme: Theme): ResolvedTheme {
+  return theme === 'system' ? getSystemTheme() : theme
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEYS.mode,
   ...props
 }: ThemeProviderProps) {
-  // BotsRouter fork patch: light-only. The upstream context API shape is
-  // kept so no consumer changes, but the effective theme is pinned to
-  // light: the stored preference is never read back, and
-  // setTheme/resetTheme persist 'light' so a stale dark preference
-  // normalizes instead of resurfacing.
-  const [theme] = useState<Theme>('light')
-  const [resolvedTheme] = useState<ResolvedTheme>('light')
+  const { uiMode } = useUiMode()
+  const privatized = uiMode === 'botsrouter'
+
+  const [theme, _setTheme] = useState<Theme>(() =>
+    readThemePreference(storageKey, THEMES, defaultTheme)
+  )
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    privatized ? 'light' : resolveTheme(theme)
+  )
+
+  // When an admin switches into the New API mode, re-read the stored
+  // mode preference: writes made while privatized were coerced to
+  // 'light', and a preference saved during an earlier New API session
+  // must take effect again.
+  useEffect(() => {
+    if (!privatized) {
+      _setTheme(readThemePreference(storageKey, THEMES, defaultTheme))
+    }
+  }, [privatized, storageKey, defaultTheme])
 
   useEffect(() => {
     const root = window.document.documentElement
-    root.classList.remove('dark')
-    root.classList.add('light')
-  }, [])
+
+    if (privatized) {
+      // BotsRouter mode: pin every surface to light.
+      root.classList.remove('dark')
+      root.classList.add('light')
+      setResolvedTheme('light')
+      return
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const applyTheme = () => {
+      const nextResolvedTheme = resolveTheme(theme)
+      root.classList.remove('light', 'dark')
+      root.classList.add(nextResolvedTheme)
+      setResolvedTheme(nextResolvedTheme)
+    }
+
+    applyTheme()
+    mediaQuery.addEventListener('change', applyTheme)
+    return () => mediaQuery.removeEventListener('change', applyTheme)
+  }, [privatized, theme])
 
   const setTheme = useCallback(
-    (_theme: Theme) => {
-      writeThemePreference(storageKey, 'light')
+    (nextTheme: Theme) => {
+      if (privatized) {
+        // Light-only: coerce and persist 'light' so a stale dark
+        // preference normalizes instead of resurfacing.
+        writeThemePreference(storageKey, 'light')
+        return
+      }
+      writeThemePreference(storageKey, nextTheme)
+      _setTheme(nextTheme)
     },
-    [storageKey]
+    [privatized, storageKey]
   )
 
   const resetTheme = useCallback(() => {
-    writeThemePreference(storageKey, 'light')
-  }, [storageKey])
+    if (privatized) {
+      writeThemePreference(storageKey, 'light')
+      return
+    }
+    writeThemePreference(storageKey, null)
+    _setTheme(defaultTheme)
+  }, [privatized, storageKey, defaultTheme])
 
   const contextValue = useMemo(
     () => ({
       defaultTheme,
-      resolvedTheme,
+      resolvedTheme: privatized ? ('light' as ResolvedTheme) : resolvedTheme,
       resetTheme,
-      theme,
+      theme: privatized ? ('light' as Theme) : theme,
       setTheme,
     }),
-    [defaultTheme, resolvedTheme, resetTheme, theme, setTheme]
+    [defaultTheme, privatized, resolvedTheme, resetTheme, theme, setTheme]
   )
 
   return (

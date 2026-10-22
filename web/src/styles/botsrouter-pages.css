@@ -21,10 +21,12 @@ For commercial licensing, please contact support@quantumnous.com
  * .br-rankings-page wrapper classes added by the two features' index.tsx,
  * so the rest of the console keeps the upstream look. Design tokens mirror
  * the official website (warm paper, ink black, signal orange, hard offset
- * shadows, capsule controls, BR Serif headings). */
+ * shadows, capsule controls, BR Serif headings). Every rule is additionally
+ * gated on html[data-ui-mode='botsrouter']: in the admin-only `newapi` UI
+ * mode (see lib/ui-mode.ts) these pages render with the upstream look. */
 
-.br-pricing-page,
-.br-rankings-page {
+html[data-ui-mode='botsrouter'] .br-pricing-page,
+html[data-ui-mode='botsrouter'] .br-rankings-page {
   --br-paper: #faf7f1;
   --br-paper-2: #f3ede2;
   --br-ink: #181410;
@@ -40,31 +42,33 @@ For commercial licensing, please contact support@quantumnous.com
 }
 
 /* Drop the upstream blue/purple aurora wash behind the page titles. */
-.br-pricing-page > div[aria-hidden],
-.br-rankings-page > div[aria-hidden] {
+html[data-ui-mode='botsrouter'] .br-pricing-page > div[aria-hidden],
+html[data-ui-mode='botsrouter'] .br-rankings-page > div[aria-hidden] {
   display: none;
 }
 
 /* Headings: brand serif with balanced wrapping. */
-.br-pricing-page h1,
-.br-pricing-page h2,
-.br-pricing-page h3,
-.br-rankings-page h1,
-.br-rankings-page h2,
-.br-rankings-page h3 {
+html[data-ui-mode='botsrouter'] .br-pricing-page h1,
+html[data-ui-mode='botsrouter'] .br-pricing-page h2,
+html[data-ui-mode='botsrouter'] .br-pricing-page h3,
+html[data-ui-mode='botsrouter'] .br-rankings-page h1,
+html[data-ui-mode='botsrouter'] .br-rankings-page h2,
+html[data-ui-mode='botsrouter'] .br-rankings-page h3 {
   font-family: var(--br-serif);
   text-wrap: balance;
 }
-.br-pricing-page h1,
-.br-rankings-page h1 {
+html[data-ui-mode='botsrouter'] .br-pricing-page h1,
+html[data-ui-mode='botsrouter'] .br-rankings-page h1 {
   letter-spacing: -0.01em;
 }
 
 /* Capsule controls everywhere (per brand rule). Collapsible triggers keep
  * their full-width row shape; toggle items and menu triggers are handled
  * by their own rules below. */
-.br-pricing-page button:not([data-slot='collapsible-trigger']),
-.br-rankings-page button {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  button:not([data-slot='collapsible-trigger']),
+html[data-ui-mode='botsrouter'] .br-rankings-page button {
   border-radius: 999px;
 }
 
@@ -73,8 +77,8 @@ For commercial licensing, please contact support@quantumnous.com
 /* ------------------------------------------------------------------ */
 
 /* Panels: filter sidebar, toolbar and any other card surface. */
-.br-pricing-page aside,
-.br-pricing-page .bg-card {
+html[data-ui-mode='botsrouter'] .br-pricing-page aside,
+html[data-ui-mode='botsrouter'] .br-pricing-page .bg-card {
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 18px;
@@ -82,96 +86,124 @@ For commercial licensing, please contact support@quantumnous.com
 }
 
 /* Model cards sit one step lighter than the big panels. */
-.br-pricing-page [data-slot='card'] {
+html[data-ui-mode='botsrouter'] .br-pricing-page [data-slot='card'] {
   box-shadow: 4px 4px 0 var(--br-ink);
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
 }
-.br-pricing-page [data-slot='card']:hover {
+html[data-ui-mode='botsrouter'] .br-pricing-page [data-slot='card']:hover {
   transform: translate(-1px, -1px);
   box-shadow: 6px 6px 0 var(--br-ink);
 }
 
 /* Model icon tile on each card. */
-.br-pricing-page [data-slot='card-header'] > div[aria-hidden] {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  [data-slot='card-header']
+  > div[aria-hidden] {
   background: var(--br-paper-2);
   border: 1.5px solid var(--br-ink);
   border-radius: 12px;
 }
 
 /* Sidebar headings in brand serif, warm section dividers. */
-.br-pricing-page aside h2 {
+html[data-ui-mode='botsrouter'] .br-pricing-page aside h2 {
   font-family: var(--br-serif);
   font-size: 15px;
 }
-.br-pricing-page aside [data-slot='collapsible-trigger'] > span:first-child {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  [data-slot='collapsible-trigger']
+  > span:first-child {
   font-family: var(--br-serif);
   font-size: 14px;
 }
-.br-pricing-page aside div.border-b {
+html[data-ui-mode='botsrouter'] .br-pricing-page aside div.border-b {
   border-color: var(--br-line);
 }
 
 /* Filter chips: capsule outline when idle, ink fill when active. */
-.br-pricing-page aside button[aria-pressed='false'] {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  button[aria-pressed='false'] {
   background: var(--br-card);
   border: 1.5px solid var(--br-line);
   color: var(--br-ink);
 }
-.br-pricing-page aside button[aria-pressed='false']:hover {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  button[aria-pressed='false']:hover {
   border-color: var(--br-ink);
 }
-.br-pricing-page aside button[aria-pressed='true'] {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  button[aria-pressed='true'] {
   background: var(--br-ink);
   border: 1.5px solid var(--br-ink);
   color: var(--br-paper);
 }
-.br-pricing-page aside button[aria-pressed='true'] span.bg-background {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  button[aria-pressed='true']
+  span.bg-background {
   background: var(--br-orange);
   color: #ffffff;
 }
-.br-pricing-page aside button[aria-pressed='false'] span.bg-muted {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  aside
+  button[aria-pressed='false']
+  span.bg-muted {
   background: var(--br-paper-2);
   color: var(--br-ink-2);
 }
 
 /* Search bar: white capsule with ink border and a soft orange focus lift. */
-.br-pricing-page header input {
+html[data-ui-mode='botsrouter'] .br-pricing-page header input {
   height: 46px;
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 999px;
   padding-left: 44px;
 }
-.br-pricing-page header input:focus {
+html[data-ui-mode='botsrouter'] .br-pricing-page header input:focus {
   border-color: var(--br-ink);
   box-shadow: 4px 4px 0 var(--br-orange-soft);
 }
-.br-pricing-page header kbd {
+html[data-ui-mode='botsrouter'] .br-pricing-page header kbd {
   background: var(--br-paper-2);
   border-color: var(--br-line);
   border-radius: 999px;
 }
 
 /* Toolbar toggle groups (price mode / token unit): segmented capsules. */
-.br-pricing-page [data-slot='toggle-group'] {
+html[data-ui-mode='botsrouter'] .br-pricing-page [data-slot='toggle-group'] {
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 999px;
   overflow: hidden;
 }
-.br-pricing-page [data-slot='toggle-group-item'] {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  [data-slot='toggle-group-item'] {
   border-radius: 999px;
 }
-.br-pricing-page [data-slot='toggle-group-item'][data-state='on'] {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  [data-slot='toggle-group-item'][data-state='on'] {
   background: var(--br-ink);
   color: var(--br-paper);
 }
 
 /* Badges (billing mode, vendor, tags): outlined capsules on paper-2. */
-.br-pricing-page [data-slot='badge'],
-.br-pricing-page [data-slot='status-badge'] {
+html[data-ui-mode='botsrouter'] .br-pricing-page [data-slot='badge'],
+html[data-ui-mode='botsrouter'] .br-pricing-page [data-slot='status-badge'] {
   background: var(--br-paper-2);
   border: 1.5px solid var(--br-ink);
   border-radius: 999px;
@@ -179,46 +211,49 @@ For commercial licensing, please contact support@quantumnous.com
 }
 
 /* Table view: wrap the grid in a brand panel, ink header rule, warm hover. */
-.br-pricing-page div:has(> table) {
+html[data-ui-mode='botsrouter'] .br-pricing-page div:has(> table) {
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 18px;
   box-shadow: 6px 6px 0 var(--br-ink);
   overflow: hidden;
 }
-.br-pricing-page thead th {
+html[data-ui-mode='botsrouter'] .br-pricing-page thead th {
   background: var(--br-paper);
   border-bottom: 2px solid var(--br-ink);
   color: var(--br-ink);
   font-weight: 700;
 }
-.br-pricing-page tbody tr {
+html[data-ui-mode='botsrouter'] .br-pricing-page tbody tr {
   border-bottom: 1px solid var(--br-line);
 }
-.br-pricing-page tbody tr:hover {
+html[data-ui-mode='botsrouter'] .br-pricing-page tbody tr:hover {
   background: var(--br-paper-2);
 }
 
 /* Empty state: branded panel (this is what visitors see with 0 models). */
-.br-pricing-page .br-pricing-empty {
+html[data-ui-mode='botsrouter'] .br-pricing-page .br-pricing-empty {
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 18px;
   box-shadow: 6px 6px 0 var(--br-ink);
 }
-.br-pricing-page .br-pricing-empty > svg {
+html[data-ui-mode='botsrouter'] .br-pricing-page .br-pricing-empty > svg {
   color: var(--br-orange);
 }
-.br-pricing-page .br-pricing-empty h3 {
+html[data-ui-mode='botsrouter'] .br-pricing-page .br-pricing-empty h3 {
   font-size: 18px;
 }
-.br-pricing-page .br-pricing-empty button {
+html[data-ui-mode='botsrouter'] .br-pricing-page .br-pricing-empty button {
   background: var(--br-orange);
   border: 1.5px solid var(--br-orange);
   color: #ffffff;
   font-weight: 600;
 }
-.br-pricing-page .br-pricing-empty button:hover {
+html[data-ui-mode='botsrouter']
+  .br-pricing-page
+  .br-pricing-empty
+  button:hover {
   background: var(--br-orange);
   box-shadow: 3px 3px 0 var(--br-ink);
   color: #ffffff;
@@ -230,27 +265,27 @@ For commercial licensing, please contact support@quantumnous.com
 
 /* Every card surface (sections, pulse cards, error panel) becomes a
  * brand panel. */
-.br-rankings-page .bg-card {
+html[data-ui-mode='botsrouter'] .br-rankings-page .bg-card {
   background: var(--br-card);
   border: 1.5px solid var(--br-ink);
   border-radius: 18px;
   box-shadow: 6px 6px 0 var(--br-ink);
 }
-.br-rankings-page section .border-t,
-.br-rankings-page .bg-card .border-b {
+html[data-ui-mode='botsrouter'] .br-rankings-page section .border-t,
+html[data-ui-mode='botsrouter'] .br-rankings-page .bg-card .border-b {
   border-color: var(--br-line);
 }
 
 /* Section icons use the signal orange, never the upstream amber/blue. */
-.br-rankings-page .text-primary,
-.br-rankings-page .text-amber-500 {
+html[data-ui-mode='botsrouter'] .br-rankings-page .text-primary,
+html[data-ui-mode='botsrouter'] .br-rankings-page .text-amber-500 {
   color: var(--br-orange);
 }
 
 /* Period switch (Today / Week / Month / Year): capsule segmented control
  * inside a small hard-shadow pill; the active segment is ink-filled and
  * the upstream underline indicator is hidden. */
-.br-rankings-page [role='tablist'] {
+html[data-ui-mode='botsrouter'] .br-rankings-page [role='tablist'] {
   display: inline-flex;
   gap: 4px;
   padding: 4px;
@@ -259,21 +294,28 @@ For commercial licensing, please contact support@quantumnous.com
   border-radius: 999px;
   box-shadow: 4px 4px 0 var(--br-ink);
 }
-.br-rankings-page [role='tablist'] button {
+html[data-ui-mode='botsrouter'] .br-rankings-page [role='tablist'] button {
   padding: 6px 18px;
   color: var(--br-ink-2);
   font-weight: 600;
 }
-.br-rankings-page [role='tablist'] button[aria-selected='true'] {
+html[data-ui-mode='botsrouter']
+  .br-rankings-page
+  [role='tablist']
+  button[aria-selected='true'] {
   background: var(--br-ink);
   color: var(--br-paper);
 }
-.br-rankings-page [role='tablist'] button > span {
+html[data-ui-mode='botsrouter']
+  .br-rankings-page
+  [role='tablist']
+  button
+  > span {
   display: none;
 }
 
 /* Leaderboard / vendor / mover rows become light card rows. */
-.br-rankings-page ul > li {
+html[data-ui-mode='botsrouter'] .br-rankings-page ul > li {
   background: var(--br-card);
   border: 1.5px solid var(--br-line);
   border-radius: 14px;
@@ -284,14 +326,17 @@ For commercial licensing, please contact support@quantumnous.com
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
-.br-rankings-page ul > li:hover {
+html[data-ui-mode='botsrouter'] .br-rankings-page ul > li:hover {
   border-color: var(--br-ink);
   box-shadow: 3px 3px 0 var(--br-ink);
 }
 
 /* Top-3 rank numbers in signal orange. The rank figure is the first
  * span of leaderboard and vendor rows; those rows carry .br-rank-top3. */
-.br-rankings-page li.br-rank-top3 > span:first-child {
+html[data-ui-mode='botsrouter']
+  .br-rankings-page
+  li.br-rank-top3
+  > span:first-child {
   color: var(--br-orange);
   font-size: 14px;
   font-weight: 800;

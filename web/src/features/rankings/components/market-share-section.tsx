@@ -21,6 +21,7 @@ import { PieChart } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useUiMode } from '@/context/ui-mode-provider'
 import { useChartTheme } from '@/lib/use-chart-theme'
 import { VCHART_OPTION } from '@/lib/vchart'
 
@@ -36,11 +37,12 @@ const PERIOD_DESCRIPTIONS: Record<RankingPeriod, string> = {
 }
 
 /** Stable colour palette for vendors, used in both the share chart and the
- * legend dots. BotsRouter fork: warm brand-hue family only (signal orange,
- * ink, ochre, clay, taupe) — no blue/purple vendor colours. Falls back to
- * the same warm palette for unknown vendors so future additions still
- * render. */
-const VENDOR_COLOURS: Record<string, string> = {
+ * legend dots. Two sets ship (BotsRouter fork): the privatized UI mode
+ * uses the warm brand-hue family only (signal orange, ink, ochre, clay,
+ * taupe) — no blue/purple vendor colours; the `newapi` UI mode uses the
+ * upstream vendor colours. Each set falls back to its own palette for
+ * unknown vendors so future additions still render. */
+const VENDOR_COLOURS_BR: Record<string, string> = {
   OpenAI: '#181410',
   Anthropic: '#d97757',
   Google: '#c4a24d',
@@ -59,7 +61,26 @@ const VENDOR_COLOURS: Record<string, string> = {
   Others: '#a79e8f',
 }
 
-const FALLBACK_PALETTE = [
+const VENDOR_COLOURS_UPSTREAM: Record<string, string> = {
+  OpenAI: '#10a37f',
+  Anthropic: '#d97757',
+  Google: '#4285f4',
+  DeepSeek: '#7c5cff',
+  Alibaba: '#ff9900',
+  xAI: '#1f2937',
+  Meta: '#1877f2',
+  Moonshot: '#ec4899',
+  Zhipu: '#06b6d4',
+  Mistral: '#ff7000',
+  ByteDance: '#3b82f6',
+  Tencent: '#22c55e',
+  MiniMax: '#a855f7',
+  Cohere: '#fb923c',
+  Baidu: '#ef4444',
+  Others: '#94a3b8',
+}
+
+const FALLBACK_PALETTE_BR = [
   '#d9481c',
   '#181410',
   '#e8833a',
@@ -75,14 +96,37 @@ const FALLBACK_PALETTE = [
   '#3e362c',
 ]
 
-function buildVendorColourMap(names: string[]): Record<string, string> {
+const FALLBACK_PALETTE_UPSTREAM = [
+  '#0ea5e9',
+  '#22c55e',
+  '#a855f7',
+  '#f97316',
+  '#14b8a6',
+  '#eab308',
+  '#ec4899',
+  '#84cc16',
+  '#6366f1',
+  '#10b981',
+  '#f43f5e',
+  '#0891b2',
+  '#94a3b8',
+]
+
+function buildVendorColourMap(
+  names: string[],
+  privatized: boolean
+): Record<string, string> {
+  const vendorColours = privatized ? VENDOR_COLOURS_BR : VENDOR_COLOURS_UPSTREAM
+  const fallbackPalette = privatized
+    ? FALLBACK_PALETTE_BR
+    : FALLBACK_PALETTE_UPSTREAM
   const result: Record<string, string> = {}
   let fallbackIdx = 0
   for (const name of names) {
-    if (VENDOR_COLOURS[name]) {
-      result[name] = VENDOR_COLOURS[name]
+    if (vendorColours[name]) {
+      result[name] = vendorColours[name]
     } else {
-      result[name] = FALLBACK_PALETTE[fallbackIdx % FALLBACK_PALETTE.length]
+      result[name] = fallbackPalette[fallbackIdx % fallbackPalette.length]
       fallbackIdx += 1
     }
   }
@@ -105,18 +149,26 @@ type MarketShareSectionProps = {
 export function MarketShareSection(props: MarketShareSectionProps) {
   const { t } = useTranslation()
   const { resolvedTheme, themeReady } = useChartTheme()
+  const { uiMode } = useUiMode()
+  const privatized = uiMode === 'botsrouter'
+  const lightTextColor = privatized
+    ? 'rgba(24, 20, 16, 0.58)'
+    : 'rgba(15, 23, 42, 0.58)'
+  const lightGridColor = privatized
+    ? 'rgba(24, 20, 16, 0.14)'
+    : 'rgba(15, 23, 42, 0.12)'
   const chartTextColor =
-    resolvedTheme === 'dark'
-      ? 'rgba(255, 255, 255, 0.68)'
-      : 'rgba(24, 20, 16, 0.58)'
+    resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.68)' : lightTextColor
   const chartGridColor =
-    resolvedTheme === 'dark'
-      ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(24, 20, 16, 0.14)'
+    resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : lightGridColor
 
   const colourMap = useMemo(
-    () => buildVendorColourMap(props.history.vendors.map((v) => v.name)),
-    [props.history]
+    () =>
+      buildVendorColourMap(
+        props.history.vendors.map((v) => v.name),
+        privatized
+      ),
+    [props.history, privatized]
   )
 
   const orderedPoints = useMemo(() => {
@@ -277,6 +329,8 @@ function VendorList(props: {
   rows: VendorRanking[]
   colourMap: Record<string, string>
 }) {
+  const { uiMode } = useUiMode()
+  const fallbackColour = uiMode === 'botsrouter' ? '#a79e8f' : '#94a3b8'
   return (
     <ul>
       {props.rows.map((vendor) => (
@@ -291,7 +345,7 @@ function VendorList(props: {
             aria-hidden
             className='size-2.5 shrink-0 rounded-full'
             style={{
-              backgroundColor: props.colourMap[vendor.vendor] ?? '#a79e8f',
+              backgroundColor: props.colourMap[vendor.vendor] ?? fallbackColour,
             }}
           />
           <VendorLink

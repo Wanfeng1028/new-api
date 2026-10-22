@@ -17,13 +17,36 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <!-- BotsRouter: the console is light-only. Pin the light class before
-         first paint; a saved dark/system preference is deliberately
-         ignored. Kept in sync with ThemeProvider, which resolves every
-         theme value to light. -->
+    <!-- BotsRouter: two UI modes (see src/lib/ui-mode.ts). Resolve the
+         mode and the theme class before first paint so neither flashes.
+         The default `botsrouter` mode is light-only and pins the light
+         class; the admin-only `newapi` mode restores the upstream
+         behaviour and honours the saved light / dark / system
+         preference. Kept in sync with UiModeProvider + ThemeProvider
+         and with the storage keys they use. -->
     <script>
       ;(function () {
-        document.documentElement.classList.add('light')
+        var uiMode = 'botsrouter'
+        try {
+          if (localStorage.getItem('botsrouter:ui-mode:v1') === 'newapi') {
+            uiMode = 'newapi'
+          }
+        } catch (e) {}
+        document.documentElement.setAttribute('data-ui-mode', uiMode)
+        if (uiMode !== 'newapi') {
+          document.documentElement.classList.add('light')
+          return
+        }
+        var theme = 'system'
+        try {
+          theme = localStorage.getItem('newapi:theme:v1:mode') || 'system'
+        } catch (e) {}
+        if (theme !== 'dark' && theme !== 'light') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+        }
+        document.documentElement.classList.add(theme)
       })()
     </script>
     <!-- BotsRouter: self-hosted Liberation Serif (metric-compatible with
@@ -65,9 +88,12 @@
     </style>
     <!--umami-->
     <!--Google Analytics-->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
 
   <body>

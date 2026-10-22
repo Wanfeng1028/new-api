@@ -21,6 +21,8 @@ import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
+import { useUiMode } from '@/context/ui-mode-provider'
+import { cn } from '@/lib/utils'
 
 import {
   LoadingSkeleton,
@@ -38,6 +40,10 @@ import { usePricingData } from './hooks/use-pricing-data'
 
 export function Pricing() {
   const { t } = useTranslation()
+  // BotsRouter fork: the brand restyle (and the narrower measure) only
+  // applies in the privatized UI mode; `newapi` mode keeps upstream.
+  const { uiMode } = useUiMode()
+  const privatized = uiMode === 'botsrouter'
   const [selectedModelName, setSelectedModelName] = useState<string | null>(
     null
   )
@@ -151,7 +157,13 @@ export function Pricing() {
   if (isLoading) {
     return (
       <PublicLayout showMainContainer={false}>
-        <div className='br-pricing-page mx-auto w-full max-w-[1160px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
+        <div
+          className={cn(
+            privatized && 'br-pricing-page',
+            'mx-auto w-full px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8',
+            privatized ? 'max-w-[1160px]' : 'max-w-[1800px]'
+          )}
+        >
           <LoadingSkeleton viewMode={viewMode} />
         </div>
       </PublicLayout>
@@ -160,7 +172,7 @@ export function Pricing() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='br-pricing-page relative'>
+      <div className={cn(privatized && 'br-pricing-page', 'relative')}>
         <div
           aria-hidden
           className='pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-20 dark:opacity-[0.10]'
@@ -176,7 +188,12 @@ export function Pricing() {
               'linear-gradient(to bottom, black 40%, transparent 100%)',
           }}
         />
-        <PageTransition className='relative mx-auto w-full max-w-[1160px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
+        <PageTransition
+          className={cn(
+            'relative mx-auto w-full px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8',
+            privatized ? 'max-w-[1160px]' : 'max-w-[1800px]'
+          )}
+        >
           <header className='mx-auto mb-5 max-w-3xl pt-5 text-center sm:mb-10 sm:pt-10'>
             <h1 className='text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.15] font-bold tracking-tight'>
               {t('Model Square')}

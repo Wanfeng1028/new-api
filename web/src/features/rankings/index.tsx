@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next'
 import { PublicLayout } from '@/components/layout'
 import { PageTransition } from '@/components/page-transition'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useUiMode } from '@/context/ui-mode-provider'
+import { cn } from '@/lib/utils'
 
 import {
   MarketShareSection,
@@ -36,6 +38,10 @@ const VALID_PERIODS: RankingPeriod[] = ['today', 'week', 'month', 'year']
 
 export function Rankings() {
   const { t } = useTranslation()
+  // BotsRouter fork: brand restyle + narrower measure only in the
+  // privatized UI mode; `newapi` mode keeps the upstream look.
+  const { uiMode } = useUiMode()
+  const privatized = uiMode === 'botsrouter'
   const search = useSearch({ from: '/rankings/' })
   const navigate = useNavigate()
 
@@ -57,7 +63,7 @@ export function Rankings() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='br-rankings-page relative'>
+      <div className={cn(privatized && 'br-rankings-page', 'relative')}>
         <div
           aria-hidden
           className='pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-20 dark:opacity-[0.10]'
@@ -73,7 +79,12 @@ export function Rankings() {
               'linear-gradient(to bottom, black 40%, transparent 100%)',
           }}
         />
-        <PageTransition className='relative mx-auto w-full max-w-[1160px] space-y-8 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8'>
+        <PageTransition
+          className={cn(
+            'relative mx-auto w-full space-y-8 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8',
+            privatized ? 'max-w-[1160px]' : 'max-w-[1280px]'
+          )}
+        >
           <RankingsHero period={period} onPeriodChange={handlePeriodChange} />
 
           {rankingsQuery.isLoading ? (

@@ -29,6 +29,9 @@ import { IconLayoutFull } from '@/assets/custom/icon-layout-full'
 import { IconSidebarFloating } from '@/assets/custom/icon-sidebar-floating'
 import { IconSidebarInset } from '@/assets/custom/icon-sidebar-inset'
 import { IconSidebarSidebar } from '@/assets/custom/icon-sidebar-sidebar'
+import { IconThemeDark } from '@/assets/custom/icon-theme-dark'
+import { IconThemeLight } from '@/assets/custom/icon-theme-light'
+import { IconThemeSystem } from '@/assets/custom/icon-theme-system'
 import {
   sideDrawerContentClassName,
   sideDrawerFooterClassName,
@@ -49,6 +52,7 @@ import { useDirection } from '@/context/direction-provider'
 import { type Collapsible, useLayout } from '@/context/layout-provider'
 import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
+import { useUiMode } from '@/context/ui-mode-provider'
 import {
   type ContentLayout,
   resolveThemeFont,
@@ -58,6 +62,7 @@ import {
   type ThemeRadius,
   type ThemeScale,
 } from '@/lib/theme-customization'
+import type { UiMode } from '@/lib/ui-mode'
 import { cn } from '@/lib/utils'
 
 import { useSidebar } from './ui/sidebar'
@@ -71,6 +76,7 @@ export function ConfigDrawer() {
   const { resetTheme } = useTheme()
   const { resetLayout } = useLayout()
   const { resetCustomization } = useThemeCustomization()
+  const { resetUiModePreference } = useUiMode()
 
   const handleReset = () => {
     setOpen(true)
@@ -78,6 +84,7 @@ export function ConfigDrawer() {
     resetTheme()
     resetLayout()
     resetCustomization()
+    resetUiModePreference()
   }
 
   return (
@@ -103,6 +110,8 @@ export function ConfigDrawer() {
           </SheetDescription>
         </SheetHeader>
         <div className={sideDrawerFormClassName()}>
+          <UiModeConfig />
+          <ThemeConfig />
           <PresetConfig />
           <FontConfig />
           <RadiusConfig />
@@ -208,10 +217,130 @@ function RadioGroupItem(props: {
   )
 }
 
-// BotsRouter fork patch: the upstream ThemeConfig section (system / light
-// / dark mode picker) is removed — the console is light-only and
-// ThemeProvider pins every surface to light, so there is no mode choice
-// to offer here.
+// BotsRouter fork: the master switch between the two console themes.
+// Admin accounts only (UiModeProvider enforces the same gate); everyone
+// else always gets the privatized BotsRouter theme. The color presets,
+// sidebar variants and other sections below stay available in both
+// modes, exactly as upstream offers them.
+function UiModeConfig() {
+  const { t } = useTranslation()
+  const { canSwitchUiMode, uiModePreference, setUiModePreference } = useUiMode()
+
+  if (!canSwitchUiMode) return null
+
+  const options: { value: UiMode; label: string; swatch: string }[] = [
+    {
+      value: 'botsrouter',
+      label: t('BotsRouter theme'),
+      swatch: 'linear-gradient(135deg, #faf7f1 0%, #d9481c 100%)',
+    },
+    {
+      value: 'newapi',
+      label: t('New API theme'),
+      swatch:
+        'linear-gradient(135deg, oklch(0.692 0.141 243.716) 0%, oklch(0.7 0.12 280) 100%)',
+    },
+  ]
+
+  return (
+    <div>
+      <SectionTitle
+        title={t('Interface')}
+        showReset={uiModePreference !== 'botsrouter'}
+        onReset={() => setUiModePreference('botsrouter')}
+      />
+      <Radio
+        value={uiModePreference}
+        onValueChange={(v) => setUiModePreference(v as UiMode)}
+        className='grid w-full grid-cols-2 gap-3'
+        aria-label={t('Select interface theme')}
+        aria-describedby='ui-mode-description'
+      >
+        {options.map((option) => (
+          <Item
+            key={option.value}
+            value={option.value}
+            className='group flex flex-col items-stretch outline-none'
+            aria-label={option.label}
+          >
+            <div
+              className={cn(
+                'ring-border relative h-12 rounded-md ring-[1px] transition',
+                'group-data-checked:ring-primary group-data-checked:shadow-md',
+                'group-focus-visible:ring-2',
+                'group-hover:ring-primary/60'
+              )}
+            >
+              <div
+                aria-hidden='true'
+                className='absolute inset-0 rounded-md'
+                style={{ background: option.swatch }}
+              />
+              <CircleCheck
+                className={cn(
+                  'fill-primary absolute top-0 right-0 z-10 size-5 translate-x-1/2 -translate-y-1/2 stroke-white',
+                  'group-data-unchecked:hidden'
+                )}
+                aria-hidden='true'
+              />
+            </div>
+            <div className='mt-1.5 truncate text-center text-xs'>
+              {option.label}
+            </div>
+          </Item>
+        ))}
+      </Radio>
+      <p
+        id='ui-mode-description'
+        className='text-muted-foreground mt-2 text-xs'
+      >
+        {t(
+          'Admin only. Switch between the privatized BotsRouter theme and the original New API theme.'
+        )}
+      </p>
+    </div>
+  )
+}
+
+// BotsRouter fork: the upstream ThemeConfig section (system / light /
+// dark mode picker). It only applies in the `newapi` UI mode — the
+// privatized mode is light-only and ThemeProvider pins every surface
+// to light, so there is no mode choice to offer there.
+function ThemeConfig() {
+  const { t } = useTranslation()
+  const { defaultTheme, theme, setTheme } = useTheme()
+  const { uiMode } = useUiMode()
+
+  if (uiMode !== 'newapi') return null
+
+  return (
+    <div>
+      <SectionTitle
+        title={t('Theme')}
+        showReset={theme !== defaultTheme}
+        onReset={() => setTheme(defaultTheme)}
+      />
+      <Radio
+        value={theme}
+        onValueChange={setTheme}
+        className='grid w-full max-w-md grid-cols-3 gap-4'
+        aria-label={t('Select theme preference')}
+        aria-describedby='theme-description'
+      >
+        {[
+          { value: 'system', label: t('System'), icon: IconThemeSystem },
+          { value: 'light', label: t('Light'), icon: IconThemeLight },
+          { value: 'dark', label: t('Dark'), icon: IconThemeDark },
+        ].map((item) => (
+          <RadioGroupItem key={item.value} item={item} isTheme />
+        ))}
+      </Radio>
+      <div id='theme-description' className='sr-only'>
+        {t('Choose between system preference, light mode, or dark mode')}
+      </div>
+    </div>
+  )
+}
 
 function PresetConfig() {
   const { t } = useTranslation()

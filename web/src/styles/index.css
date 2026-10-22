@@ -30,6 +30,7 @@ For commercial licensing, please contact support@quantumnous.com
 @import './theme.css';
 @import './theme-presets.css';
 @import './botsrouter-pages.css';
+@import './newapi-theme.css';
 
 @layer base {
   :root {
@@ -749,17 +750,19 @@ For commercial licensing, please contact support@quantumnous.com
 
 /* BotsRouter fork patch: capsule controls and ink-outlined cards, matching
  * the official website (botsrouter.botsarena.tech). Deliberately unlayered
- * so these win over Tailwind utility layers without !important. */
-[data-slot='button'],
-[data-slot='input'] {
+ * so these win over Tailwind utility layers without !important. Scoped to
+ * the privatized `botsrouter` UI mode (html[data-ui-mode]); the admin-only
+ * `newapi` mode keeps the upstream control shapes and card borders. */
+html[data-ui-mode='botsrouter'] [data-slot='button'],
+html[data-ui-mode='botsrouter'] [data-slot='input'] {
   border-radius: 999px;
 }
 
-[data-slot='card'] {
+html[data-ui-mode='botsrouter'] [data-slot='card'] {
   border: 1.5px solid #181410;
 }
 
-.dark [data-slot='card'] {
+html[data-ui-mode='botsrouter'].dark [data-slot='card'] {
   border-color: #8a8175;
 }
 
@@ -768,8 +771,9 @@ For commercial licensing, please contact support@quantumnous.com
  * official website lost exactly this fight to Semi's Inter stack before
  * resorting to a self-hosted font plus a top-priority rule. Elements that
  * take the `font-sans` utility resolve through --font-ui-sans in
- * theme.css, which leads with the same BR Serif stack. */
-body {
+ * theme.css, which leads with the same BR Serif stack. Scoped to the
+ * `botsrouter` UI mode like the rules above. */
+html[data-ui-mode='botsrouter'] body {
   font-family:
     'BR Serif', 'Times New Roman', Times, 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif !important;

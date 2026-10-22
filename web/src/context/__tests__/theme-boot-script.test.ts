@@ -22,9 +22,11 @@ import { resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { THEME_STORAGE_KEYS } from '@/lib/theme-storage'
+import { UI_MODE_STORAGE_KEY } from '@/lib/ui-mode'
 
-// The inline script in index.html must apply the theme class before React
-// mounts; Dark Reader checks `html.dark` only once while the page loads.
+// The inline script in index.html must apply the UI mode attribute and
+// the theme class before React mounts; Dark Reader checks `html.dark`
+// only once while the page loads.
 const html = readFileSync(
   resolve(import.meta.dirname, '../../../index.html'),
   'utf8'
@@ -53,44 +55,81 @@ afterEach(() => {
   vi.restoreAllMocks()
   localStorage.clear()
   document.documentElement.classList.remove('light', 'dark')
+  document.documentElement.removeAttribute('data-ui-mode')
 })
 
 describe('index.html theme boot script', () => {
-  it('ignores a saved dark preference and applies light (light-only console)', () => {
-    mockSystemDarkMode(false)
+  it('defaults to the botsrouter UI mode and applies light, ignoring a saved dark preference', () => {
+    mockSystemDarkMode(true)
     localStorage.setItem(THEME_STORAGE_KEYS.mode, 'dark')
 
     runBootScript()
 
+    expect(document.documentElement).toHaveAttribute(
+      'data-ui-mode',
+      'botsrouter'
+    )
     expect(document.documentElement).toHaveClass('light')
     expect(document.documentElement).not.toHaveClass('dark')
   })
 
-  it('applies the saved light preference even when the system is dark', () => {
+  it('treats an invalid UI mode value as botsrouter and applies light', () => {
     mockSystemDarkMode(true)
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'sepia')
+    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'dark')
+
+    runBootScript()
+
+    expect(document.documentElement).toHaveAttribute(
+      'data-ui-mode',
+      'botsrouter'
+    )
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
+  })
+
+  it('applies the saved dark preference in newapi UI mode', () => {
+    mockSystemDarkMode(false)
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'newapi')
+    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'dark')
+
+    runBootScript()
+
+    expect(document.documentElement).toHaveAttribute('data-ui-mode', 'newapi')
+    expect(document.documentElement).toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('light')
+  })
+
+  it('applies the saved light preference in newapi UI mode even when the system is dark', () => {
+    mockSystemDarkMode(true)
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'newapi')
     localStorage.setItem(THEME_STORAGE_KEYS.mode, 'light')
 
     runBootScript()
 
+    expect(document.documentElement).toHaveAttribute('data-ui-mode', 'newapi')
     expect(document.documentElement).toHaveClass('light')
     expect(document.documentElement).not.toHaveClass('dark')
   })
 
-  it('applies light even when the system prefers dark and no preference is saved', () => {
+  it('follows the system preference in newapi UI mode when no mode preference is saved', () => {
     mockSystemDarkMode(true)
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'newapi')
 
     runBootScript()
 
-    expect(document.documentElement).toHaveClass('light')
-    expect(document.documentElement).not.toHaveClass('dark')
+    expect(document.documentElement).toHaveAttribute('data-ui-mode', 'newapi')
+    expect(document.documentElement).toHaveClass('dark')
   })
 
-  it('follows the system light mode when the saved value is invalid', () => {
+  it('falls back to system light in newapi UI mode when the saved mode value is invalid', () => {
     mockSystemDarkMode(false)
+    localStorage.setItem(UI_MODE_STORAGE_KEY, 'newapi')
     localStorage.setItem(THEME_STORAGE_KEYS.mode, 'sepia')
 
     runBootScript()
 
+    expect(document.documentElement).toHaveAttribute('data-ui-mode', 'newapi')
     expect(document.documentElement).toHaveClass('light')
   })
 })
