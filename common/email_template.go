@@ -28,7 +28,7 @@ func brandedEmailShell(heading string, body string) string {
 		`<td style="vertical-align:middle;"><img src="` + brandedEmailLogoURL + `" alt="` + name + `" width="76" height="57" style="display:block;"></td>` +
 		`<td style="vertical-align:middle;padding-left:16px;">` +
 		`<div style="font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:24px;font-weight:700;color:#181410;letter-spacing:0.5px;">` + name + `</div>` +
-		`<div style="font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#8A8175;letter-spacing:2px;">` + brandedEmailTagline + `</div>` +
+		`<div style="font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;font-size:12px;color:#8A8175;letter-spacing:1.5px;white-space:nowrap;">` + brandedEmailTagline + `</div>` +
 		`</td></tr></table></td></tr>`)
 	b.WriteString(`<tr><td style="padding:22px 36px 0 36px;"><div style="height:3px;background-color:#D9481C;font-size:0;line-height:0;">&nbsp;</div></td></tr>`)
 	b.WriteString(`<tr><td style="padding:26px 36px 28px 36px;font-family:'Times New Roman',Times,serif,'PingFang SC','Microsoft YaHei',Arial,sans-serif;">` +
