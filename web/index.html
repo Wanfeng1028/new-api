@@ -14,12 +14,30 @@
     />
 
     <meta name="theme-color" content="#fff" />
-    <!-- Icon files are served from the Caddy brand directory (/brand/*),
-         which stays reachable on the console hosts even where page and
-         root asset paths redirect to the official site. -->
+    <!-- Tab icons: the raster set under /static/icons/ is embedded in
+         the app bundle, so it stays reachable on the console hosts even
+         where root asset paths redirect to the official site. Safari
+         does not render SVG favicons, so the PNG declarations come
+         first; the SVG is kept for browsers that prefer it. -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/static/icons/favicon-32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/static/icons/icon-192.png"
+    />
+    <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="/brand/logo.svg" />
-    <link rel="icon" type="image/x-icon" href="/brand/favicon.ico" />
-    <link rel="apple-touch-icon" href="/brand/logo-email.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/static/icons/apple-touch-icon.png"
+    />
     <!-- BotsRouter: two UI modes (see src/lib/ui-mode.ts). Resolve the
          mode and the theme class before first paint so neither flashes.
          The default `botsrouter` mode is light-only and pins the light
