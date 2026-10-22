@@ -1,0 +1,298 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+/* BotsRouter brand restyle for the console "Model Square" (pricing) and
+ * "Rankings" pages. Everything is scoped under the .br-pricing-page /
+ * .br-rankings-page wrapper classes added by the two features' index.tsx,
+ * so the rest of the console keeps the upstream look. Design tokens mirror
+ * the official website (warm paper, ink black, signal orange, hard offset
+ * shadows, capsule controls, BR Serif headings). */
+
+.br-pricing-page,
+.br-rankings-page {
+  --br-paper: #faf7f1;
+  --br-paper-2: #f3ede2;
+  --br-ink: #181410;
+  --br-ink-2: #5c554b;
+  --br-orange: #d9481c;
+  --br-orange-soft: #f6d9cf;
+  --br-line: #e4dccf;
+  --br-card: #ffffff;
+  --br-serif:
+    'BR Serif', 'Times New Roman', Times, 'Songti SC', 'STSong', serif;
+  background: var(--br-paper);
+  color: var(--br-ink);
+}
+
+/* Drop the upstream blue/purple aurora wash behind the page titles. */
+.br-pricing-page > div[aria-hidden],
+.br-rankings-page > div[aria-hidden] {
+  display: none;
+}
+
+/* Headings: brand serif with balanced wrapping. */
+.br-pricing-page h1,
+.br-pricing-page h2,
+.br-pricing-page h3,
+.br-rankings-page h1,
+.br-rankings-page h2,
+.br-rankings-page h3 {
+  font-family: var(--br-serif);
+  text-wrap: balance;
+}
+.br-pricing-page h1,
+.br-rankings-page h1 {
+  letter-spacing: -0.01em;
+}
+
+/* Capsule controls everywhere (per brand rule). Collapsible triggers keep
+ * their full-width row shape; toggle items and menu triggers are handled
+ * by their own rules below. */
+.br-pricing-page button:not([data-slot='collapsible-trigger']),
+.br-rankings-page button {
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Pricing (Model Square)                                              */
+/* ------------------------------------------------------------------ */
+
+/* Panels: filter sidebar, toolbar and any other card surface. */
+.br-pricing-page aside,
+.br-pricing-page .bg-card {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 18px;
+  box-shadow: 6px 6px 0 var(--br-ink);
+}
+
+/* Model cards sit one step lighter than the big panels. */
+.br-pricing-page [data-slot='card'] {
+  box-shadow: 4px 4px 0 var(--br-ink);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.br-pricing-page [data-slot='card']:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 var(--br-ink);
+}
+
+/* Model icon tile on each card. */
+.br-pricing-page [data-slot='card-header'] > div[aria-hidden] {
+  background: var(--br-paper-2);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 12px;
+}
+
+/* Sidebar headings in brand serif, warm section dividers. */
+.br-pricing-page aside h2 {
+  font-family: var(--br-serif);
+  font-size: 15px;
+}
+.br-pricing-page aside [data-slot='collapsible-trigger'] > span:first-child {
+  font-family: var(--br-serif);
+  font-size: 14px;
+}
+.br-pricing-page aside div.border-b {
+  border-color: var(--br-line);
+}
+
+/* Filter chips: capsule outline when idle, ink fill when active. */
+.br-pricing-page aside button[aria-pressed='false'] {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-line);
+  color: var(--br-ink);
+}
+.br-pricing-page aside button[aria-pressed='false']:hover {
+  border-color: var(--br-ink);
+}
+.br-pricing-page aside button[aria-pressed='true'] {
+  background: var(--br-ink);
+  border: 1.5px solid var(--br-ink);
+  color: var(--br-paper);
+}
+.br-pricing-page aside button[aria-pressed='true'] span.bg-background {
+  background: var(--br-orange);
+  color: #ffffff;
+}
+.br-pricing-page aside button[aria-pressed='false'] span.bg-muted {
+  background: var(--br-paper-2);
+  color: var(--br-ink-2);
+}
+
+/* Search bar: white capsule with ink border and a soft orange focus lift. */
+.br-pricing-page header input {
+  height: 46px;
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 999px;
+  padding-left: 44px;
+}
+.br-pricing-page header input:focus {
+  border-color: var(--br-ink);
+  box-shadow: 4px 4px 0 var(--br-orange-soft);
+}
+.br-pricing-page header kbd {
+  background: var(--br-paper-2);
+  border-color: var(--br-line);
+  border-radius: 999px;
+}
+
+/* Toolbar toggle groups (price mode / token unit): segmented capsules. */
+.br-pricing-page [data-slot='toggle-group'] {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.br-pricing-page [data-slot='toggle-group-item'] {
+  border-radius: 999px;
+}
+.br-pricing-page [data-slot='toggle-group-item'][data-state='on'] {
+  background: var(--br-ink);
+  color: var(--br-paper);
+}
+
+/* Badges (billing mode, vendor, tags): outlined capsules on paper-2. */
+.br-pricing-page [data-slot='badge'],
+.br-pricing-page [data-slot='status-badge'] {
+  background: var(--br-paper-2);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 999px;
+  color: var(--br-ink);
+}
+
+/* Table view: wrap the grid in a brand panel, ink header rule, warm hover. */
+.br-pricing-page div:has(> table) {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 18px;
+  box-shadow: 6px 6px 0 var(--br-ink);
+  overflow: hidden;
+}
+.br-pricing-page thead th {
+  background: var(--br-paper);
+  border-bottom: 2px solid var(--br-ink);
+  color: var(--br-ink);
+  font-weight: 700;
+}
+.br-pricing-page tbody tr {
+  border-bottom: 1px solid var(--br-line);
+}
+.br-pricing-page tbody tr:hover {
+  background: var(--br-paper-2);
+}
+
+/* Empty state: branded panel (this is what visitors see with 0 models). */
+.br-pricing-page .br-pricing-empty {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 18px;
+  box-shadow: 6px 6px 0 var(--br-ink);
+}
+.br-pricing-page .br-pricing-empty > svg {
+  color: var(--br-orange);
+}
+.br-pricing-page .br-pricing-empty h3 {
+  font-size: 18px;
+}
+.br-pricing-page .br-pricing-empty button {
+  background: var(--br-orange);
+  border: 1.5px solid var(--br-orange);
+  color: #ffffff;
+  font-weight: 600;
+}
+.br-pricing-page .br-pricing-empty button:hover {
+  background: var(--br-orange);
+  box-shadow: 3px 3px 0 var(--br-ink);
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------------ */
+/* Rankings                                                            */
+/* ------------------------------------------------------------------ */
+
+/* Every card surface (sections, pulse cards, error panel) becomes a
+ * brand panel. */
+.br-rankings-page .bg-card {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 18px;
+  box-shadow: 6px 6px 0 var(--br-ink);
+}
+.br-rankings-page section .border-t,
+.br-rankings-page .bg-card .border-b {
+  border-color: var(--br-line);
+}
+
+/* Section icons use the signal orange, never the upstream amber/blue. */
+.br-rankings-page .text-primary,
+.br-rankings-page .text-amber-500 {
+  color: var(--br-orange);
+}
+
+/* Period switch (Today / Week / Month / Year): capsule segmented control
+ * inside a small hard-shadow pill; the active segment is ink-filled and
+ * the upstream underline indicator is hidden. */
+.br-rankings-page [role='tablist'] {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--br-card);
+  border: 1.5px solid var(--br-ink);
+  border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--br-ink);
+}
+.br-rankings-page [role='tablist'] button {
+  padding: 6px 18px;
+  color: var(--br-ink-2);
+  font-weight: 600;
+}
+.br-rankings-page [role='tablist'] button[aria-selected='true'] {
+  background: var(--br-ink);
+  color: var(--br-paper);
+}
+.br-rankings-page [role='tablist'] button > span {
+  display: none;
+}
+
+/* Leaderboard / vendor / mover rows become light card rows. */
+.br-rankings-page ul > li {
+  background: var(--br-card);
+  border: 1.5px solid var(--br-line);
+  border-radius: 14px;
+  margin-bottom: 8px;
+  padding-left: 14px;
+  padding-right: 14px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.br-rankings-page ul > li:hover {
+  border-color: var(--br-ink);
+  box-shadow: 3px 3px 0 var(--br-ink);
+}
+
+/* Top-3 rank numbers in signal orange. The rank figure is the first
+ * span of leaderboard and vendor rows; those rows carry .br-rank-top3. */
+.br-rankings-page li.br-rank-top3 > span:first-child {
+  color: var(--br-orange);
+  font-size: 14px;
+  font-weight: 800;
+}

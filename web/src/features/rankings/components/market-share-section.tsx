@@ -36,41 +36,43 @@ const PERIOD_DESCRIPTIONS: Record<RankingPeriod, string> = {
 }
 
 /** Stable colour palette for vendors, used in both the share chart and the
- * legend dots. Falls back to a neutral palette for unknown vendors so that
- * future additions still render. */
+ * legend dots. BotsRouter fork: warm brand-hue family only (signal orange,
+ * ink, ochre, clay, taupe) — no blue/purple vendor colours. Falls back to
+ * the same warm palette for unknown vendors so future additions still
+ * render. */
 const VENDOR_COLOURS: Record<string, string> = {
-  OpenAI: '#10a37f',
+  OpenAI: '#181410',
   Anthropic: '#d97757',
-  Google: '#4285f4',
-  DeepSeek: '#7c5cff',
-  Alibaba: '#ff9900',
-  xAI: '#1f2937',
-  Meta: '#1877f2',
-  Moonshot: '#ec4899',
-  Zhipu: '#06b6d4',
+  Google: '#c4a24d',
+  DeepSeek: '#8a7b63',
+  Alibaba: '#e86a17',
+  xAI: '#3e362c',
+  Meta: '#a9713b',
+  Moonshot: '#dba08a',
+  Zhipu: '#6e5b3e',
   Mistral: '#ff7000',
-  ByteDance: '#3b82f6',
-  Tencent: '#22c55e',
-  MiniMax: '#a855f7',
-  Cohere: '#fb923c',
-  Baidu: '#ef4444',
-  Others: '#94a3b8',
+  ByteDance: '#c97b4a',
+  Tencent: '#7d7466',
+  MiniMax: '#b03a2e',
+  Cohere: '#eb7753',
+  Baidu: '#c0392b',
+  Others: '#a79e8f',
 }
 
 const FALLBACK_PALETTE = [
-  '#0ea5e9',
-  '#22c55e',
-  '#a855f7',
-  '#f97316',
-  '#14b8a6',
-  '#eab308',
-  '#ec4899',
-  '#84cc16',
-  '#6366f1',
-  '#10b981',
-  '#f43f5e',
-  '#0891b2',
-  '#94a3b8',
+  '#d9481c',
+  '#181410',
+  '#e8833a',
+  '#8a7b63',
+  '#c4a24d',
+  '#7a4a21',
+  '#dba08a',
+  '#5c554b',
+  '#b03a2e',
+  '#d9a441',
+  '#6e5b3e',
+  '#f0c297',
+  '#3e362c',
 ]
 
 function buildVendorColourMap(names: string[]): Record<string, string> {
@@ -106,11 +108,11 @@ export function MarketShareSection(props: MarketShareSectionProps) {
   const chartTextColor =
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.68)'
-      : 'rgba(15, 23, 42, 0.58)'
+      : 'rgba(24, 20, 16, 0.58)'
   const chartGridColor =
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(15, 23, 42, 0.12)'
+      : 'rgba(24, 20, 16, 0.14)'
 
   const colourMap = useMemo(
     () => buildVendorColourMap(props.history.vendors.map((v) => v.name)),
@@ -278,7 +280,10 @@ function VendorList(props: {
   return (
     <ul>
       {props.rows.map((vendor) => (
-        <li key={vendor.vendor} className='flex items-center gap-3 py-2.5'>
+        <li
+          key={vendor.vendor}
+          className={`flex items-center gap-3 py-2.5${vendor.rank <= 3 ? ' br-rank-top3' : ''}`}
+        >
           <span className='text-muted-foreground/80 w-6 shrink-0 text-right font-mono text-xs tabular-nums'>
             {vendor.rank}.
           </span>
@@ -286,7 +291,7 @@ function VendorList(props: {
             aria-hidden
             className='size-2.5 shrink-0 rounded-full'
             style={{
-              backgroundColor: props.colourMap[vendor.vendor] ?? '#94a3b8',
+              backgroundColor: props.colourMap[vendor.vendor] ?? '#a79e8f',
             }}
           />
           <VendorLink

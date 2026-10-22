@@ -57,7 +57,7 @@ export function Rankings() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='relative'>
+      <div className='br-rankings-page relative'>
         <div
           aria-hidden
           className='pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-20 dark:opacity-[0.10]'
@@ -73,7 +73,7 @@ export function Rankings() {
               'linear-gradient(to bottom, black 40%, transparent 100%)',
           }}
         />
-        <PageTransition className='relative mx-auto w-full max-w-[1280px] space-y-8 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8'>
+        <PageTransition className='relative mx-auto w-full max-w-[1160px] space-y-8 px-3 pt-16 pb-10 sm:px-6 sm:pt-20 sm:pb-12 xl:px-8'>
           <RankingsHero period={period} onPeriodChange={handlePeriodChange} />
 
           {rankingsQuery.isLoading ? (

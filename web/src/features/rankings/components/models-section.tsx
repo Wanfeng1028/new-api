@@ -35,6 +35,26 @@ const PERIOD_DESCRIPTIONS: Record<RankingPeriod, string> = {
   year: 'Weekly token usage by model across the past year',
 }
 
+/** BotsRouter fork: warm brand-hue palette for the stacked history chart
+ * (signal orange, ink, ochre, clay, taupe) — no blue/purple series. */
+const MODEL_CHART_PALETTE = [
+  '#d9481c',
+  '#181410',
+  '#e8833a',
+  '#8a7b63',
+  '#c4a24d',
+  '#7a4a21',
+  '#dba08a',
+  '#5c554b',
+  '#b03a2e',
+  '#d9a441',
+  '#6e5b3e',
+  '#f0c297',
+  '#3e362c',
+  '#a9713b',
+  '#c97b4a',
+]
+
 const TOOLTIP_MAX_ROWS = 10
 
 type ModelsSectionProps = {
@@ -54,11 +74,19 @@ export function ModelsSection(props: ModelsSectionProps) {
   const chartTextColor =
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.68)'
-      : 'rgba(15, 23, 42, 0.58)'
+      : 'rgba(24, 20, 16, 0.58)'
   const chartGridColor =
     resolvedTheme === 'dark'
       ? 'rgba(255, 255, 255, 0.12)'
-      : 'rgba(15, 23, 42, 0.12)'
+      : 'rgba(24, 20, 16, 0.14)'
+
+  const colourMap = useMemo(() => {
+    const result: Record<string, string> = {}
+    props.history.models.forEach((model, idx) => {
+      result[model.name] = MODEL_CHART_PALETTE[idx % MODEL_CHART_PALETTE.length]
+    })
+    return result
+  }, [props.history])
 
   // Order points so the largest model appears at the bottom of every stack.
   const orderedPoints = useMemo(() => {
@@ -86,6 +114,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       yField: 'tokens',
       seriesField: 'model',
       stack: true,
+      color: { specified: colourMap },
       legends: { visible: false },
       axes: [
         {
@@ -161,7 +190,7 @@ export function ModelsSection(props: ModelsSectionProps) {
       },
       animationAppear: { duration: 500 },
     }
-  }, [chartGridColor, chartTextColor, orderedPoints, t])
+  }, [chartGridColor, chartTextColor, colourMap, orderedPoints, t])
 
   return (
     <section className='bg-card overflow-hidden rounded-lg border'>

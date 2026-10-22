@@ -73,11 +73,7 @@ function ModelList(props: {
       {props.rows.map((row) => (
         <li
           key={row.model_name}
-          className={
-            compact
-              ? 'flex items-center gap-3 py-2'
-              : 'flex items-center gap-3 py-2.5'
-          }
+          className={`${compact ? 'flex items-center gap-3 py-2' : 'flex items-center gap-3 py-2.5'}${row.rank <= 3 ? ' br-rank-top3' : ''}`}
         >
           <span className='text-muted-foreground/80 w-6 shrink-0 text-right font-mono text-xs tabular-nums'>
             {row.rank}.
