@@ -178,6 +178,7 @@ func InitOptionMap() {
 	common.OptionMap["MjForwardUrlEnabled"] = strconv.FormatBool(setting.MjForwardUrlEnabled)
 	common.OptionMap["MjActionCheckSuccessEnabled"] = strconv.FormatBool(setting.MjActionCheckSuccessEnabled)
 	common.OptionMap["CheckSensitiveEnabled"] = strconv.FormatBool(setting.CheckSensitiveEnabled)
+	common.OptionMap[SiteModeOptionKey] = SiteModeBeta
 	common.OptionMap["DemoSiteEnabled"] = strconv.FormatBool(operation_setting.DemoSiteEnabled)
 	common.OptionMap["SelfUseModeEnabled"] = strconv.FormatBool(operation_setting.SelfUseModeEnabled)
 	common.OptionMap["ModelRequestRateLimitEnabled"] = strconv.FormatBool(setting.ModelRequestRateLimitEnabled)
@@ -234,6 +235,13 @@ func SyncOptions(frequency int) {
 func validateOptionValue(key string, value string) error {
 	if key == legacyAccessTokenRetireAtKey {
 		return errLegacyRetireAtReadOnly
+	}
+	if key == SiteModeOptionKey {
+		switch value {
+		case SiteModeBeta, SiteModeBetaPlus, SiteModeRelease:
+			return nil
+		}
+		return common.NewMessage("Site mode must be beta, beta_plus, or release")
 	}
 	if err := operation_setting.ValidateQuotaOption(key, value); err != nil {
 		return err

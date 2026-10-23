@@ -177,7 +177,7 @@ export function MonitoringSettingsSection({
           />
           <p className='text-muted-foreground text-xs'>
             {t(
-              'Collect relay latency and success-rate metrics for the model square.'
+              'Collect relay latency and success-rate metrics for the model library.'
             )}
           </p>
 

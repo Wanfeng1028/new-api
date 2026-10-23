@@ -46,7 +46,7 @@ export function ModelSquareStatus(props: { model: Model; detail?: boolean }) {
       break
     case 'hidden':
       label = t('Listing hidden')
-      description = t('Hidden from the model square by metadata policy.')
+      description = t('Hidden from the model library by metadata policy.')
       break
     case 'partial':
       label = t('Partly shown')
@@ -59,11 +59,11 @@ export function ModelSquareStatus(props: { model: Model; detail?: boolean }) {
       label = t('Unavailable')
       variant = 'warning'
       description = t(
-        'No channel is currently available. This model will not appear in the model square.'
+        'No channel is currently available. This model will not appear in the model library.'
       )
       if (props.model.configured_channel_count === 0) {
         description = t(
-          'No channel is configured. This model will not appear in the model square.'
+          'No channel is configured. This model will not appear in the model library.'
         )
         if (props.model.name_rule !== 0) {
           description = t(

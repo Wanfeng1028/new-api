@@ -167,14 +167,14 @@ export function DataTableBulkActions<TData>({
                 disabled={hasMissingMetadata}
                 onClick={handleEnableAll}
                 className='size-8'
-                aria-label={t('Show selected models in model square')}
-                title={t('Show selected models in model square')}
+                aria-label={t('Show selected models in model library')}
+                title={t('Show selected models in model library')}
               />
             }
           >
             <Eye />
             <span className='sr-only'>
-              {t('Show selected models in model square')}
+              {t('Show selected models in model library')}
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -182,7 +182,7 @@ export function DataTableBulkActions<TData>({
               {t(
                 hasMissingMetadata
                   ? 'Add metadata to all selected models first.'
-                  : 'Show selected models in model square'
+                  : 'Show selected models in model library'
               )}
             </p>
           </TooltipContent>
@@ -197,14 +197,14 @@ export function DataTableBulkActions<TData>({
                 disabled={hasMissingMetadata}
                 onClick={handleDisableAll}
                 className='size-8'
-                aria-label={t('Hide selected models from model square')}
-                title={t('Hide selected models from model square')}
+                aria-label={t('Hide selected models from model library')}
+                title={t('Hide selected models from model library')}
               />
             }
           >
             <EyeOff />
             <span className='sr-only'>
-              {t('Hide selected models from model square')}
+              {t('Hide selected models from model library')}
             </span>
           </TooltipTrigger>
           <TooltipContent>
@@ -212,7 +212,7 @@ export function DataTableBulkActions<TData>({
               {t(
                 hasMissingMetadata
                   ? 'Add metadata to all selected models first.'
-                  : 'Hide selected models from model square'
+                  : 'Hide selected models from model library'
               )}
             </p>
           </TooltipContent>

@@ -97,6 +97,8 @@ export type TopNavLink = {
   disabled?: boolean
   requiresAuth?: boolean
   external?: boolean
+  /** External links open in a new tab by default; sameTab forces the current tab. */
+  sameTab?: boolean
 }
 
 /**

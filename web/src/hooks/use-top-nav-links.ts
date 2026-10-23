@@ -21,6 +21,10 @@ import { useTranslation } from 'react-i18next'
 
 import { useStatus } from '@/hooks/use-status'
 import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
+import {
+  OFFICIAL_MODEL_LIBRARY_URL,
+  OFFICIAL_SITE_URL,
+} from '@/lib/official-site'
 import { useAuthStore } from '@/stores/auth-store'
 
 export type TopNavLink = {
@@ -29,6 +33,8 @@ export type TopNavLink = {
   disabled?: boolean
   requiresAuth?: boolean
   external?: boolean
+  /** External links open in a new tab by default; sameTab forces the current tab. */
+  sameTab?: boolean
 }
 
 /**
@@ -62,9 +68,14 @@ export function useTopNavLinks(): TopNavLink[] {
 
   const links: TopNavLink[] = []
 
-  // Home
+  // Home (official website; navigates in the current tab)
   if (modules?.home !== false) {
-    links.push({ title: t('Home'), href: 'https://botsrouter.botsarena.tech', external: true })
+    links.push({
+      title: t('Home'),
+      href: OFFICIAL_SITE_URL,
+      external: true,
+      sameTab: true,
+    })
   }
 
   // Console -> /dashboard (new console path)
@@ -72,11 +83,19 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Console'), href: '/dashboard' })
   }
 
-  // Pricing
+  // Model Library: the single maintained catalog lives on the official
+  // website; this entry jumps there in the current tab instead of opening
+  // a second, console-hosted copy of the catalog.
   const pricing = modules?.pricing
   if (pricing && typeof pricing === 'object' && pricing.enabled) {
     const requiresAuth = pricing.requireAuth && !isAuthed
-    links.push({ title: t('Model Square'), href: '/pricing', requiresAuth })
+    links.push({
+      title: t('Model Library'),
+      href: OFFICIAL_MODEL_LIBRARY_URL,
+      external: true,
+      sameTab: true,
+      requiresAuth,
+    })
   }
 
   // Rankings
@@ -101,8 +120,9 @@ export function useTopNavLinks(): TopNavLink[] {
   if (modules?.about !== false) {
     links.push({
       title: t('About'),
-      href: 'https://botsrouter.botsarena.tech/#/about',
+      href: `${OFFICIAL_SITE_URL}/#/about`,
       external: true,
+      sameTab: true,
     })
   }
 

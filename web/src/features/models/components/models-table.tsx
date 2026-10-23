@@ -268,7 +268,7 @@ export function ModelsTable() {
           },
           {
             columnId: 'square_state',
-            title: t('Model square visibility'),
+            title: t('Model library visibility'),
             options: [
               { label: t('Displayed'), value: 'visible' },
               { label: t('Unavailable'), value: 'unavailable' },

@@ -225,7 +225,7 @@ it('requests channel models and distinguishes catalog policy from availability u
   expect(screen.getAllByText('Channels 0 · Groups 0')).toHaveLength(3)
   expect(
     screen.queryByText(
-      'No channel is configured. This model will not appear in the model square.'
+      'No channel is configured. This model will not appear in the model library.'
     )
   ).not.toBeInTheDocument()
   const user = userEvent.setup()
@@ -234,13 +234,13 @@ it('requests channel models and distinguishes catalog policy from availability u
   })[0]
   expect(trigger).toHaveAttribute(
     'title',
-    'No channel is configured. This model will not appear in the model square.'
+    'No channel is configured. This model will not appear in the model library.'
   )
   await user.click(trigger)
   expect(
     await screen.findByRole('dialog', { name: 'Unavailable' })
   ).toHaveTextContent(
-    'No channel is configured. This model will not appear in the model square.'
+    'No channel is configured. This model will not appear in the model library.'
   )
   expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await user.keyboard('{Escape}')
@@ -254,7 +254,7 @@ it('requests channel models and distinguishes catalog policy from availability u
   await user.click(screen.getByRole('tab', { name: 'Channels and groups' }))
   expect(
     screen.getByText(
-      'No channel is configured. This model will not appear in the model square.'
+      'No channel is configured. This model will not appear in the model library.'
     )
   ).toBeVisible()
 })
@@ -281,8 +281,8 @@ it('keeps channel rows individually selectable and disables metadata mutations f
   for (const name of [
     'Change vendor',
     'Clear vendor',
-    'Show selected models in model square',
-    'Hide selected models from model square',
+    'Show selected models in model library',
+    'Hide selected models from model library',
     'Delete selected models',
   ]) {
     expect(within(toolbar).getByRole('button', { name })).toBeDisabled()
@@ -378,7 +378,7 @@ it('keeps prices and channel explanations readable in the mobile card and detail
   await user.click(screen.getByRole('tab', { name: 'Channels and groups' }))
   expect(
     screen.getByText(
-      'No channel is configured. This model will not appear in the model square.'
+      'No channel is configured. This model will not appear in the model library.'
     )
   ).toBeVisible()
 })
@@ -531,7 +531,7 @@ it('opens a long translated reason by touch in the mobile card without requiring
   })
   expect(popup).toHaveTextContent(
     i18n.t(
-      'No channel is configured. This model will not appear in the model square.'
+      'No channel is configured. This model will not appear in the model library.'
     )
   )
   expect(popup).toHaveClass('whitespace-normal', 'break-words')
@@ -743,7 +743,7 @@ it('filters actual visibility independently of policy and restores filters throu
   })
   const user = userEvent.setup()
   await user.click(
-    screen.getByRole('button', { name: 'Model square visibility' })
+    screen.getByRole('button', { name: 'Model library visibility' })
   )
   await user.click(screen.getByRole('option', { name: 'Partly shown' }))
   await waitFor(() =>
@@ -775,7 +775,7 @@ it('filters actual visibility independently of policy and restores filters throu
     })
   )
   await user.click(
-    screen.getByRole('button', { name: /Model square visibility/ })
+    screen.getByRole('button', { name: /Model library visibility/ })
   )
   await user.click(screen.getByRole('option', { name: 'Clear filters' }))
   await waitFor(() =>
@@ -812,7 +812,7 @@ it('keeps an active visibility filter when its server result is empty', async ()
   expect(screen.getByText('No Models Found')).toBeVisible()
   expect(screen.getByText('Try adjusting your search')).toBeVisible()
   expect(
-    screen.getByRole('button', { name: /Model square visibility.*Unavailable/ })
+    screen.getByRole('button', { name: /Model library visibility.*Unavailable/ })
   ).toBeVisible()
   expect(get).toHaveBeenCalledWith('/api/models/search', {
     params: expect.objectContaining({ square_state: 'unavailable', p: 1 }),

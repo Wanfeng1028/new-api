@@ -204,7 +204,7 @@ export function useModelsColumns(
       },
       {
         accessorKey: 'square_state',
-        header: t('Model square visibility'),
+        header: t('Model library visibility'),
         size: 115,
         enableSorting: false,
         meta: { mobileBadge: true },

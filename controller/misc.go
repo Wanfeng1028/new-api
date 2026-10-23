@@ -105,6 +105,7 @@ func GetStatus(c *gin.Context) {
 
 		// 模块管理配置
 		"HeaderNavModules":    common.OptionMap["HeaderNavModules"],
+		"site_mode":           model.NormalizeSiteMode(common.OptionMap[model.SiteModeOptionKey]),
 		"SidebarModulesAdmin": common.OptionMap["SidebarModulesAdmin"],
 
 		"oidc_enabled":                system_setting.GetOIDCSettings().Enabled,

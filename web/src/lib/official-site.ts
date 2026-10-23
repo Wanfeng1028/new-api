@@ -16,16 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-export { PricingSidebar } from './pricing-sidebar'
-export { PricingToolbar } from './pricing-toolbar'
-export { ModelCard } from './model-card'
-export { ModelCardGrid } from './model-card-grid'
-export { LoadingSkeleton } from './loading-skeleton'
-export { EmptyState } from './empty-state'
-export { SearchBar } from './search-bar'
-export {
-  ModelDetails,
-  ModelDetailsContent,
-  ModelDetailsDrawer,
-} from './model-details'
-export { PricingTable } from './pricing-table'
+
+/**
+ * Canonical URLs of the BotsRouter official website. The console links to
+ * the site (and to its model library, which is the single maintained model
+ * catalog) instead of hosting a second copy of the catalog pages.
+ */
+export const OFFICIAL_SITE_URL = 'https://botsrouter.botsarena.tech'
+
+/** The official website's model library (HashRouter route). */
+export const OFFICIAL_MODEL_LIBRARY_URL = `${OFFICIAL_SITE_URL}/#/models`
