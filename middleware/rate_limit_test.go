@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -94,6 +95,67 @@ func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	key := redisUserRateLimitKey("USER", 42)
 	assert.True(t, redisServer.Exists(key))
 	assert.Equal(t, 23*time.Second, redisServer.TTL(key))
+}
+
+// Identity-bound (per-user) rate limits skip admins and above, whichever auth
+// path populated the role: dashboard sessions set the "role" key, token auth
+// populates constant.ContextKeyUserRole from the user record. Regular users
+// keep hitting the same limits on both storage backends.
+func TestUserRateLimitExemptsAdmins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	buildRouter := func(mark string, identity func(c *gin.Context)) *gin.Engine {
+		router := gin.New()
+		router.GET("/limited", identity, userRateLimitFactory(1, 60, mark), func(c *gin.Context) {
+			c.Status(http.StatusNoContent)
+		})
+		return router
+	}
+	roleKeyIdentity := func(id, role int) func(c *gin.Context) {
+		return func(c *gin.Context) {
+			c.Set("id", id)
+			c.Set("role", role)
+		}
+	}
+	typedKeyIdentity := func(id, role int) func(c *gin.Context) {
+		return func(c *gin.Context) {
+			c.Set("id", id)
+			common.SetContextKey(c, constant.ContextKeyUserRole, role)
+		}
+	}
+
+	for _, tc := range []struct {
+		name     string
+		backend  string
+		identity func(id, role int) func(c *gin.Context)
+	}{
+		{name: "redis/dashboard role key", backend: "redis", identity: roleKeyIdentity},
+		{name: "redis/token role key", backend: "redis", identity: typedKeyIdentity},
+		{name: "memory/dashboard role key", backend: "memory", identity: roleKeyIdentity},
+		{name: "memory/token role key", backend: "memory", identity: typedKeyIdentity},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.backend == "redis" {
+				useRateLimitMiniRedis(t)
+			} else {
+				previousRedisEnabled := common.RedisEnabled
+				common.RedisEnabled = false
+				t.Cleanup(func() { common.RedisEnabled = previousRedisEnabled })
+			}
+			mark := "EXEMPT-" + tc.name
+
+			commonRouter := buildRouter(mark, tc.identity(930001, common.RoleCommonUser))
+			assert.Equal(t, http.StatusNoContent, performRateLimitRequest(commonRouter, "/limited", "192.0.2.80:12345").Code)
+			assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(commonRouter, "/limited", "192.0.2.80:12345").Code)
+
+			for _, role := range []int{common.RoleAdminUser, common.RoleRootUser} {
+				adminRouter := buildRouter(mark, tc.identity(930002+role, role))
+				for range 3 {
+					assert.Equal(t, http.StatusNoContent, performRateLimitRequest(adminRouter, "/limited", "192.0.2.81:12345").Code, "role %d must not be rate limited", role)
+				}
+			}
+		})
+	}
 }
 
 func TestRedisEmailVerificationRateLimiterPreservesResponseAndTTL(t *testing.T) {

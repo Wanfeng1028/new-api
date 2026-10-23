@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -213,6 +214,21 @@ func UploadRateLimit() func(c *gin.Context) {
 	return rateLimitFactory(common.UploadRateLimitNum, common.UploadRateLimitDuration, "UP")
 }
 
+// adminRateLimitExempt reports whether the authenticated user holds an admin
+// role or above. Identity-bound rate limits (the per-user limiters built by
+// userRateLimitFactory and the model request rate limit) skip those accounts:
+// operators must not be throttled by limits meant for regular users, including
+// when calling models with their own API tokens. IP-bound limiters run before
+// authentication and are unaffected. The role is read from server-side auth
+// state only: the "role" key set for dashboard sessions and
+// constant.ContextKeyUserRole populated from the user record by token auth.
+func adminRateLimitExempt(c *gin.Context) bool {
+	if c.GetInt("role") >= common.RoleAdminUser {
+		return true
+	}
+	return common.GetContextKeyInt(c, constant.ContextKeyUserRole) >= common.RoleAdminUser
+}
+
 // userRateLimitFactory creates a rate limiter keyed by authenticated user ID
 // instead of client IP, making it resistant to proxy rotation attacks.
 // Must be used AFTER authentication middleware (UserAuth).
@@ -225,6 +241,9 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 				c.Abort()
 				return
 			}
+			if adminRateLimitExempt(c) {
+				return
+			}
 			userRedisRateLimiter(c, maxRequestNum, duration, redisUserRateLimitKey(mark, userID))
 		}
 	}
@@ -235,6 +254,9 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 		if userID == 0 {
 			c.Status(http.StatusUnauthorized)
 			c.Abort()
+			return
+		}
+		if adminRateLimitExempt(c) {
 			return
 		}
 		key := fmt.Sprintf("%s:user:%d", mark, userID)

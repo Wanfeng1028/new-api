@@ -172,6 +172,12 @@ func modelRequestSucceeded(c *gin.Context) bool {
 // ModelRequestRateLimit 模型请求限流中间件
 func ModelRequestRateLimit() func(c *gin.Context) {
 	return func(c *gin.Context) {
+		// 管理员及以上账户豁免模型请求限流（身份来自服务端认证状态）
+		if adminRateLimitExempt(c) {
+			c.Next()
+			return
+		}
+
 		// 在每个请求时检查是否启用限流
 		if !setting.ModelRequestRateLimitEnabled {
 			c.Next()

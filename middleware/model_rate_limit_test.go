@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
@@ -138,6 +139,55 @@ func TestModelMemoryRateLimitRejectionsReturnOpenAIError(t *testing.T) {
 			}})
 			require.NoError(t, err)
 			assert.JSONEq(t, string(want), resp.Body.String())
+		})
+	}
+}
+
+// Admins and above are exempt from the model request rate limit: token auth
+// populates the role from the user record (UserBase.WriteContext), and the
+// middleware must not count or block those requests on either backend, while
+// a regular user under the same limits is still blocked.
+func TestModelRateLimitExemptsAdmins(t *testing.T) {
+	require.NoError(t, i18n.Init())
+	previousEnabled, previousMinutes := setting.ModelRequestRateLimitEnabled, setting.ModelRequestRateLimitDurationMinutes
+	previousTotal, previousSuccess := setting.ModelRequestRateLimitCount, setting.ModelRequestRateLimitSuccessCount
+	previousGroups, previousRedisEnabled := setting.ModelRequestRateLimitGroup, common.RedisEnabled
+	t.Cleanup(func() {
+		setting.ModelRequestRateLimitEnabled, setting.ModelRequestRateLimitDurationMinutes = previousEnabled, previousMinutes
+		setting.ModelRequestRateLimitCount, setting.ModelRequestRateLimitSuccessCount = previousTotal, previousSuccess
+		setting.ModelRequestRateLimitGroup, common.RedisEnabled = previousGroups, previousRedisEnabled
+	})
+	setting.ModelRequestRateLimitEnabled, setting.ModelRequestRateLimitDurationMinutes = true, 1
+	setting.ModelRequestRateLimitCount, setting.ModelRequestRateLimitSuccessCount = 0, 1
+	setting.ModelRequestRateLimitGroup = map[string][2]int{}
+	common.RedisEnabled = false
+
+	for _, backend := range []string{"memory", "redis"} {
+		t.Run(backend, func(t *testing.T) {
+			if backend == "redis" {
+				useRateLimitMiniRedis(t)
+			}
+			for _, tc := range []struct {
+				role int
+				want []int
+			}{
+				{role: common.RoleCommonUser, want: []int{http.StatusOK, http.StatusTooManyRequests}},
+				{role: common.RoleAdminUser, want: []int{http.StatusOK, http.StatusOK, http.StatusOK}},
+				{role: common.RoleRootUser, want: []int{http.StatusOK, http.StatusOK, http.StatusOK}},
+			} {
+				userID := 7300000 + int(modelRateLimitTestUsers.Add(1))
+				user := &model.UserBase{Id: userID, Role: tc.role}
+				router := gin.New()
+				router.GET("/", func(c *gin.Context) {
+					c.Set("id", userID)
+					user.WriteContext(c)
+				}, ModelRequestRateLimit(), func(c *gin.Context) {
+					c.Status(http.StatusOK)
+				})
+				for i, want := range tc.want {
+					assert.Equal(t, want, performRateLimitRequest(router, "/", "127.0.0.1:1000").Code, "role %d request %d", tc.role, i+1)
+				}
+			}
 		})
 	}
 }
