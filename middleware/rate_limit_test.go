@@ -85,7 +85,7 @@ func TestRedisUserRateLimiterUsesSharedFixedWindow(t *testing.T) {
 	router.GET(
 		"/limited",
 		func(c *gin.Context) { c.Set("id", 42) },
-		userRateLimitFactory(1, 23, "USER"),
+		userRateLimitFactory(1, 23, "USER", true),
 		func(c *gin.Context) { c.Status(http.StatusNoContent) },
 	)
 
@@ -106,7 +106,7 @@ func TestUserRateLimitExemptsAdmins(t *testing.T) {
 
 	buildRouter := func(mark string, identity func(c *gin.Context)) *gin.Engine {
 		router := gin.New()
-		router.GET("/limited", identity, userRateLimitFactory(1, 60, mark), func(c *gin.Context) {
+		router.GET("/limited", identity, userRateLimitFactory(1, 60, mark, true), func(c *gin.Context) {
 			c.Status(http.StatusNoContent)
 		})
 		return router
@@ -153,6 +153,112 @@ func TestUserRateLimitExemptsAdmins(t *testing.T) {
 				for range 3 {
 					assert.Equal(t, http.StatusNoContent, performRateLimitRequest(adminRouter, "/limited", "192.0.2.81:12345").Code, "role %d must not be rate limited", role)
 				}
+			}
+		})
+	}
+}
+
+// UserCriticalRateLimit guards account-security endpoints (access tokens,
+// 2FA/passkey, security verification, email binding, invite quota transfer),
+// so it opts out of the admin exemption: admins and root users are throttled
+// exactly like regular users, on both storage backends and both role sources.
+func TestUserCriticalRateLimitThrottlesAdmins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	previousEnable, previousNum, previousDuration := common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration
+	t.Cleanup(func() {
+		common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration = previousEnable, previousNum, previousDuration
+	})
+	common.CriticalRateLimitEnable, common.CriticalRateLimitNum, common.CriticalRateLimitDuration = true, 1, 60
+
+	roleKeyIdentity := func(id, role int) func(c *gin.Context) {
+		return func(c *gin.Context) {
+			c.Set("id", id)
+			c.Set("role", role)
+		}
+	}
+	typedKeyIdentity := func(id, role int) func(c *gin.Context) {
+		return func(c *gin.Context) {
+			c.Set("id", id)
+			common.SetContextKey(c, constant.ContextKeyUserRole, role)
+		}
+	}
+
+	for _, tc := range []struct {
+		name     string
+		backend  string
+		identity func(id, role int) func(c *gin.Context)
+	}{
+		{name: "redis/dashboard role key", backend: "redis", identity: roleKeyIdentity},
+		{name: "redis/token role key", backend: "redis", identity: typedKeyIdentity},
+		{name: "memory/dashboard role key", backend: "memory", identity: roleKeyIdentity},
+		{name: "memory/token role key", backend: "memory", identity: typedKeyIdentity},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.backend == "redis" {
+				useRateLimitMiniRedis(t)
+			} else {
+				previousRedisEnabled := common.RedisEnabled
+				common.RedisEnabled = false
+				t.Cleanup(func() { common.RedisEnabled = previousRedisEnabled })
+			}
+			scope := "test-" + tc.name
+
+			for _, role := range []int{common.RoleCommonUser, common.RoleAdminUser, common.RoleRootUser} {
+				router := gin.New()
+				router.GET("/limited", tc.identity(940000+role, role), UserCriticalRateLimit(scope), func(c *gin.Context) {
+					c.Status(http.StatusNoContent)
+				})
+				assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/limited", "192.0.2.82:12345").Code)
+				assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(router, "/limited", "192.0.2.82:12345").Code, "role %d must stay throttled on security endpoints", role)
+			}
+		})
+	}
+}
+
+// SearchRateLimit keeps the admin exemption: only the security-endpoint
+// limiter (UserCriticalRateLimit) opts out of it.
+func TestSearchRateLimitStillExemptsAdmins(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	previousEnable, previousNum, previousDuration := common.SearchRateLimitEnable, common.SearchRateLimitNum, common.SearchRateLimitDuration
+	t.Cleanup(func() {
+		common.SearchRateLimitEnable, common.SearchRateLimitNum, common.SearchRateLimitDuration = previousEnable, previousNum, previousDuration
+	})
+	common.SearchRateLimitEnable, common.SearchRateLimitNum, common.SearchRateLimitDuration = true, 1, 60
+
+	for _, tc := range []struct {
+		name    string
+		backend string
+		baseID  int
+	}{
+		{name: "redis", backend: "redis", baseID: 950000},
+		{name: "memory", backend: "memory", baseID: 960000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.backend == "redis" {
+				useRateLimitMiniRedis(t)
+			} else {
+				previousRedisEnabled := common.RedisEnabled
+				common.RedisEnabled = false
+				t.Cleanup(func() { common.RedisEnabled = previousRedisEnabled })
+			}
+
+			commonRouter := gin.New()
+			commonRouter.GET("/search", func(c *gin.Context) {
+				c.Set("id", tc.baseID+int(common.RoleCommonUser))
+				c.Set("role", common.RoleCommonUser)
+			}, SearchRateLimit(), func(c *gin.Context) { c.Status(http.StatusNoContent) })
+			assert.Equal(t, http.StatusNoContent, performRateLimitRequest(commonRouter, "/search", "192.0.2.83:12345").Code)
+			assert.Equal(t, http.StatusTooManyRequests, performRateLimitRequest(commonRouter, "/search", "192.0.2.83:12345").Code)
+
+			adminRouter := gin.New()
+			adminRouter.GET("/search", func(c *gin.Context) {
+				c.Set("id", tc.baseID+int(common.RoleRootUser))
+				c.Set("role", common.RoleRootUser)
+			}, SearchRateLimit(), func(c *gin.Context) { c.Status(http.StatusNoContent) })
+			for range 3 {
+				assert.Equal(t, http.StatusNoContent, performRateLimitRequest(adminRouter, "/search", "192.0.2.84:12345").Code, "admins must stay exempt from search rate limiting")
 			}
 		})
 	}
@@ -273,7 +379,7 @@ func TestRedisFailurePolicies(t *testing.T) {
 	router.GET(
 		"/user",
 		func(c *gin.Context) { c.Set("id", 7) },
-		userRateLimitFactory(1, 30, "FAIL-USER"),
+		userRateLimitFactory(1, 30, "FAIL-USER", true),
 		func(c *gin.Context) { c.Status(http.StatusNoContent) },
 	)
 	router.GET("/email", EmailVerificationRateLimit(), func(c *gin.Context) {

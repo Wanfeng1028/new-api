@@ -199,10 +199,15 @@ func UserCriticalRateLimit(scope string) func(c *gin.Context) {
 	if !common.CriticalRateLimitEnable {
 		return defNext
 	}
+	// Admin exemption is disabled here on purpose: this limiter guards
+	// account-security endpoints (access tokens, 2FA/passkey, security
+	// verification, email binding, invite quota transfer), where throttling
+	// must keep protecting admins too, e.g. if a session is hijacked.
 	return userRateLimitFactory(
 		common.CriticalRateLimitNum,
 		common.CriticalRateLimitDuration,
 		"UC:"+scope,
+		false,
 	)
 }
 
@@ -215,9 +220,10 @@ func UploadRateLimit() func(c *gin.Context) {
 }
 
 // adminRateLimitExempt reports whether the authenticated user holds an admin
-// role or above. Identity-bound rate limits (the per-user limiters built by
-// userRateLimitFactory and the model request rate limit) skip those accounts:
-// operators must not be throttled by limits meant for regular users, including
+// role or above. Identity-bound rate limits that opt in (the per-user limiters
+// built by userRateLimitFactory with exemptAdmins set, and the model request
+// rate limit) skip those accounts: operators must not be throttled by limits
+// meant for regular users, including
 // when calling models with their own API tokens. IP-bound limiters run before
 // authentication and are unaffected. The role is read from server-side auth
 // state only: the "role" key set for dashboard sessions and
@@ -231,8 +237,10 @@ func adminRateLimitExempt(c *gin.Context) bool {
 
 // userRateLimitFactory creates a rate limiter keyed by authenticated user ID
 // instead of client IP, making it resistant to proxy rotation attacks.
-// Must be used AFTER authentication middleware (UserAuth).
-func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c *gin.Context) {
+// Must be used AFTER authentication middleware (UserAuth). exemptAdmins
+// controls whether admin-and-above accounts skip the limiter; limiters
+// guarding account-security endpoints pass false so admins stay throttled.
+func userRateLimitFactory(maxRequestNum int, duration int64, mark string, exemptAdmins bool) func(c *gin.Context) {
 	if common.RedisEnabled {
 		return func(c *gin.Context) {
 			userID := c.GetInt("id")
@@ -241,7 +249,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 				c.Abort()
 				return
 			}
-			if adminRateLimitExempt(c) {
+			if exemptAdmins && adminRateLimitExempt(c) {
 				return
 			}
 			userRedisRateLimiter(c, maxRequestNum, duration, redisUserRateLimitKey(mark, userID))
@@ -256,7 +264,7 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string) func(c
 			c.Abort()
 			return
 		}
-		if adminRateLimitExempt(c) {
+		if exemptAdmins && adminRateLimitExempt(c) {
 			return
 		}
 		key := fmt.Sprintf("%s:user:%d", mark, userID)
@@ -288,5 +296,5 @@ func SearchRateLimit() func(c *gin.Context) {
 	if !common.SearchRateLimitEnable {
 		return defNext
 	}
-	return userRateLimitFactory(common.SearchRateLimitNum, common.SearchRateLimitDuration, "SR")
+	return userRateLimitFactory(common.SearchRateLimitNum, common.SearchRateLimitDuration, "SR", true)
 }
