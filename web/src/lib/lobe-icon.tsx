@@ -70,15 +70,33 @@ const LAZY_ICONS = new Map<
 >()
 
 function renderLobeIconFallback(
-  name: string,
+  _name: string,
   size: number | string
 ): ReactNode {
+  // BotsRouter fork patch: the fallback must never be a letter avatar
+  // (first-letter logos are banned site-wide). Unknown vendors get a
+  // neutral connected-nodes glyph instead.
+  const px = typeof size === 'number' ? size : parseInt(size, 10) || 20
   return (
     <div
-      className='bg-muted text-muted-foreground flex items-center justify-center rounded-full text-xs font-medium'
+      className='bg-muted text-muted-foreground flex items-center justify-center rounded-full'
       style={{ width: size, height: size }}
+      aria-hidden='true'
     >
-      {name.charAt(0).toUpperCase() || '?'}
+      <svg
+        width={Math.max(10, Math.round(px * 0.62))}
+        height={Math.max(10, Math.round(px * 0.62))}
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='2'
+        strokeLinecap='round'
+      >
+        <circle cx='5' cy='19' r='2.2' />
+        <circle cx='19' cy='5' r='2.2' />
+        <circle cx='12' cy='12' r='2.2' fill='currentColor' stroke='none' />
+        <path d='M6.8 17.2 10.2 13.8M13.8 10.2 17.2 6.8' />
+      </svg>
     </div>
   )
 }
