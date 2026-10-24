@@ -1,7 +1,6 @@
 package model
 
 import (
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -106,8 +105,13 @@ func GetCatalogOnlyPricing() []Pricing {
 	for _, p := range GetPricing() {
 		served[p.ModelName] = true
 	}
+	// Version-sync final fix: catalog-only entries must come out in
+	// catalog order (which is release-newest-first), not alphabetical.
+	// The metadata rows were seeded from the catalog file in file order,
+	// so an explicit id order reproduces it; the previous slices.Sort
+	// is what made the appended catalog show A-Z and hid newest-first.
 	var allMeta []Model
-	_ = DB.Find(&allMeta).Error
+	_ = DB.Order("id").Find(&allMeta).Error
 	names := make([]string, 0)
 	seen := make(map[string]bool)
 	for i := range allMeta {
@@ -125,7 +129,6 @@ func GetCatalogOnlyPricing() []Pricing {
 		return nil
 	}
 	metaMap := resolveModelMetadata(allMeta, names)
-	slices.Sort(names)
 	entries := make([]Pricing, 0, len(names))
 	for _, name := range names {
 		pricing := Pricing{

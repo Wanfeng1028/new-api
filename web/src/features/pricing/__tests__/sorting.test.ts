@@ -65,6 +65,41 @@ const models = [
   }),
 ]
 
+describe('default sorting (version-sync final fix)', () => {
+  test('keeps server order untouched: newest-first catalog order must not be re-sorted', () => {
+    const serverOrder = [
+      pricingModel('flint-v1.0-free', {}),
+      pricingModel('minimax-m3.1-flash-free', {}),
+      pricingModel('deepseek-v4p1-flash', {}),
+      pricingModel('a-model-that-sorts-first-alphabetically', {}),
+    ]
+    expect(
+      sortModels(serverOrder, SORT_OPTIONS.DEFAULT).map((m) => m.model_name)
+    ).toEqual([
+      'flint-v1.0-free',
+      'minimax-m3.1-flash-free',
+      'deepseek-v4p1-flash',
+      'a-model-that-sorts-first-alphabetically',
+    ])
+    // The input itself is never mutated by sorting.
+    expect(serverOrder.map((m) => m.model_name)).toEqual([
+      'flint-v1.0-free',
+      'minimax-m3.1-flash-free',
+      'deepseek-v4p1-flash',
+      'a-model-that-sorts-first-alphabetically',
+    ])
+  })
+
+  test('an unknown sort key also preserves order instead of falling back to name order', () => {
+    expect(
+      sortModels(
+        [pricingModel('zeta', {}), pricingModel('alpha', {})],
+        'not-a-sort-option'
+      ).map((m) => m.model_name)
+    ).toEqual(['zeta', 'alpha'])
+  })
+})
+
 describe('price sorting', () => {
   test.each([
     [
