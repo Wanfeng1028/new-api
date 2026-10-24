@@ -7343,6 +7343,7 @@
     "Zhipu V4": "智谱 V4",
     "Zoom": "缩放",
     "Redirecting to the model library…": "正在跳转到模型库…",
-    "Site mode must be beta, beta_plus, or release": "站点模式必须是 beta、beta_plus 或 release"
+    "Site mode must be beta, beta_plus, or release": "站点模式必须是 beta、beta_plus 或 release",
+    "Login parameters are invalid, please refresh the page and try again": "登录参数异常，请刷新页面后重试"
   }
 }

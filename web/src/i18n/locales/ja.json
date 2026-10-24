@@ -7343,6 +7343,7 @@
     "Zhipu V4": "Zhipu V 4",
     "Zoom": "ズーム",
     "Redirecting to the model library…": "モデルライブラリへリダイレクトしています…",
-    "Site mode must be beta, beta_plus, or release": "サイトモードは beta、beta_plus、release のいずれかでなければなりません"
+    "Site mode must be beta, beta_plus, or release": "サイトモードは beta、beta_plus、release のいずれかでなければなりません",
+    "Login parameters are invalid, please refresh the page and try again": "ログインパラメータが無効です。ページを更新して再試行してください"
   }
 }

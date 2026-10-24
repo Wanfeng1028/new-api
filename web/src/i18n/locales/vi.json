@@ -7343,6 +7343,7 @@
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom",
     "Redirecting to the model library…": "Đang chuyển hướng đến thư viện mô hình…",
-    "Site mode must be beta, beta_plus, or release": "Chế độ trang phải là beta, beta_plus hoặc release"
+    "Site mode must be beta, beta_plus, or release": "Chế độ trang phải là beta, beta_plus hoặc release",
+    "Login parameters are invalid, please refresh the page and try again": "Tham số đăng nhập không hợp lệ, vui lòng làm mới trang và thử lại"
   }
 }

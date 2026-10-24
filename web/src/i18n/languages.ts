@@ -76,6 +76,64 @@ export function convertDetectedLanguage(value: string): string {
 }
 
 /**
+ * Cross-subdomain language sync with the official site (review F-17).
+ *
+ * The official site (botsrouter.botsarena.tech) and this console
+ * (dashboard.botsarena.tech) cannot share localStorage, so the language
+ * preference is mirrored into a `br-lang` cookie scoped to the parent
+ * domain. The official site only knows `en` / `zh`; the mapping below is
+ * the single source of truth for both directions:
+ *
+ * - console -> shared: `zhCN` -> `zh`, `zhTW` -> `zh` (the official site
+ *   has no Traditional Chinese variant), every other console code is
+ *   written as-is (the official site ignores values it does not know).
+ * - shared -> console: `zh` -> `zhCN`; values that already are console
+ *   codes pass through; anything else yields `null` (ignore the cookie
+ *   and keep the existing local preference / English fallback).
+ */
+export const SHARED_LANGUAGE_COOKIE = 'br-lang'
+
+export function toSharedLanguageCode(consoleCode: string): string {
+  const normalized = normalizeInterfaceLanguage(consoleCode)
+  if (normalized === 'zhCN' || normalized === 'zhTW') return 'zh'
+  return normalized
+}
+
+export function fromSharedLanguageCode(
+  value?: string | null
+): InterfaceLanguageCode | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (trimmed === 'zh') return 'zhCN'
+  return INTERFACE_LANGUAGE_OPTIONS.some((lang) => lang.code === trimmed)
+    ? (trimmed as InterfaceLanguageCode)
+    : null
+}
+
+export function readSharedLanguageCookie(): string | null {
+  try {
+    const match = document.cookie.match(
+      new RegExp(`(?:^|;\\s*)${SHARED_LANGUAGE_COOKIE}=([^;]*)`)
+    )
+    return match ? decodeURIComponent(match[1]) : null
+  } catch {
+    return null
+  }
+}
+
+export function writeSharedLanguageCookie(consoleCode: string): void {
+  try {
+    const shared = toSharedLanguageCode(consoleCode)
+    const domain = window.location.hostname.endsWith('botsarena.tech')
+      ? '; Domain=botsarena.tech'
+      : ''
+    document.cookie = `${SHARED_LANGUAGE_COOKIE}=${encodeURIComponent(shared)}; Path=/; Max-Age=31536000; SameSite=Lax; Secure${domain}`
+  } catch {
+    // Cookie unavailable (non-browser environment): sync is best effort.
+  }
+}
+
+/**
  * Convert an interface language code (the values i18next uses, such as `zhCN` /
  * `zhTW`) into a valid BCP-47 locale tag that the `Intl.*` APIs accept.
  *

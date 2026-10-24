@@ -47,9 +47,43 @@
          and with the storage keys they use. -->
     <script>
       ;(function () {
+        // BotsRouter: shared language preference (review F-17). The
+        // official site and this console live on different subdomains,
+        // so localStorage is not shared; the `br-lang` cookie on the
+        // parent domain is the shared carrier. Sync it into i18next's
+        // storage key before the bundle (and its i18n init) runs.
+        // Mapping: shared `zh` -> console `zhCN`; console-only codes
+        // pass through; unknown values are ignored so the existing
+        // local preference / English fallback stays in charge.
+        try {
+          var langMatch = document.cookie.match(/(?:^|;\s*)br-lang=([^;]*)/)
+          if (langMatch) {
+            var sharedLang = decodeURIComponent(langMatch[1])
+            var consoleLang = sharedLang === 'zh' ? 'zhCN' : sharedLang
+            if (
+              ['en', 'zhCN', 'zhTW', 'fr', 'ru', 'ja', 'vi'].indexOf(
+                consoleLang
+              ) >= 0
+            ) {
+              localStorage.setItem('i18nextLng', consoleLang)
+            }
+          }
+        } catch (e) {}
         var uiMode = 'botsrouter'
         try {
-          if (localStorage.getItem('botsrouter:ui-mode:v1') === 'newapi') {
+          // Review F-06 (residual): the stored `newapi` preference is
+          // honoured before first paint only when a session hint cookie
+          // says someone is (or was) signed in on this host. Without a
+          // hint the visitor is anonymous, UiModeProvider will force
+          // the default mode once bootstrap settles anyway, and painting
+          // `newapi` first only produced a flip on every refresh.
+          var hasSessionHint = /(?:^|;\s*)new_api_has_session=1(?:;|$)/.test(
+            document.cookie || ''
+          )
+          if (
+            hasSessionHint &&
+            localStorage.getItem('botsrouter:ui-mode:v1') === 'newapi'
+          ) {
             uiMode = 'newapi'
           }
         } catch (e) {}

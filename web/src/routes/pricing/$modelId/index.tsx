@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import z from 'zod'
 
+import { useUiMode } from '@/context/ui-mode-provider'
+import { ModelDetails } from '@/features/pricing/components/model-details'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { OFFICIAL_MODEL_LIBRARY_URL } from '@/lib/official-site'
 import { useAuthStore } from '@/stores/auth-store'
@@ -42,7 +45,37 @@ function ModelLibraryRedirect() {
   )
 }
 
+const modelDetailsSearchSchema = z.object({
+  search: z.string().optional(),
+  sort: z.string().optional(),
+  vendor: z.string().optional(),
+  group: z.string().optional(),
+  quotaType: z.string().optional(),
+  endpointType: z.string().optional(),
+  tag: z.string().optional(),
+  tokenUnit: z.enum(['M', 'K']).optional(),
+  view: z.enum(['card', 'table']).optional().catch(undefined),
+  rechargePrice: z.boolean().optional(),
+})
+
+/**
+ * BotsRouter fork patch (review F-08 residual, completed 2026-10-24):
+ * like the pricing index route, the redirect to the official website
+ * applies to the privatized UI mode only; the admin-only `newapi` mode
+ * renders the upstream native model details page. The search schema is
+ * the upstream one — without it, ModelDetails' search params are
+ * untyped and lose tokenUnit / rechargePrice.
+ */
+function ModelDetailsRoute() {
+  const { uiMode } = useUiMode()
+  if (uiMode === 'newapi') {
+    return <ModelDetails />
+  }
+  return <ModelLibraryRedirect />
+}
+
 export const Route = createFileRoute('/pricing/$modelId/')({
+  validateSearch: modelDetailsSearchSchema,
   beforeLoad: async ({ context, location }) => {
     const access = await getModuleAccessForGuard(context.queryClient, 'pricing')
     if (!access.enabled) {
@@ -58,5 +91,5 @@ export const Route = createFileRoute('/pricing/$modelId/')({
       }
     }
   },
-  component: ModelLibraryRedirect,
+  component: ModelDetailsRoute,
 })

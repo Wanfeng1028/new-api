@@ -18,7 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, test } from 'vitest'
 
-import { convertDetectedLanguage } from './languages'
+import {
+  convertDetectedLanguage,
+  fromSharedLanguageCode,
+  toSharedLanguageCode,
+} from './languages'
 
 describe('convertDetectedLanguage', () => {
   test('maps browser BCP-47 Chinese tags onto interface codes', () => {
@@ -45,5 +49,31 @@ describe('convertDetectedLanguage', () => {
     expect(convertDetectedLanguage('en')).toBe('en')
     expect(convertDetectedLanguage('fr-FR')).toBe('fr-FR')
     expect(convertDetectedLanguage('ja')).toBe('ja')
+  })
+})
+
+describe('shared br-lang cookie mapping (review F-17)', () => {
+  test('maps console codes onto the shared vocabulary', () => {
+    expect(toSharedLanguageCode('zhCN')).toBe('zh')
+    // The official site has no Traditional variant: closest is `zh`.
+    expect(toSharedLanguageCode('zhTW')).toBe('zh')
+    expect(toSharedLanguageCode('en')).toBe('en')
+    // Console-only languages pass through; the official site ignores them.
+    expect(toSharedLanguageCode('fr')).toBe('fr')
+  })
+
+  test('maps shared values back onto console codes', () => {
+    expect(fromSharedLanguageCode('zh')).toBe('zhCN')
+    expect(fromSharedLanguageCode('zhCN')).toBe('zhCN')
+    expect(fromSharedLanguageCode('zhTW')).toBe('zhTW')
+    expect(fromSharedLanguageCode('en')).toBe('en')
+    expect(fromSharedLanguageCode('fr')).toBe('fr')
+  })
+
+  test('rejects unknown shared values so the local fallback stays in charge', () => {
+    expect(fromSharedLanguageCode('xx')).toBeNull()
+    expect(fromSharedLanguageCode('')).toBeNull()
+    expect(fromSharedLanguageCode(null)).toBeNull()
+    expect(fromSharedLanguageCode(undefined)).toBeNull()
   })
 })

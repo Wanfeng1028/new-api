@@ -20,7 +20,12 @@ import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
-import { convertDetectedLanguage } from './languages'
+import {
+  convertDetectedLanguage,
+  fromSharedLanguageCode,
+  readSharedLanguageCookie,
+  writeSharedLanguageCookie,
+} from './languages'
 import en from './locales/en.json'
 import fr from './locales/fr.json'
 import ja from './locales/ja.json'
@@ -38,6 +43,22 @@ export const resources = {
   vi,
   zhTW,
 } as const
+
+// BotsRouter fork patch (review F-17): before i18n initialises, pull the
+// shared `br-lang` cookie (written by the official site or by a previous
+// console visit) into the detector's localStorage key, so a language
+// chosen on either surface follows the user to the other. The boot
+// script in index.html does the same before first paint; doing it here
+// as well keeps the behaviour when the bundle is embedded elsewhere.
+// Unknown cookie values are ignored, preserving the English fallback.
+try {
+  const shared = fromSharedLanguageCode(readSharedLanguageCookie())
+  if (shared) {
+    window.localStorage.setItem('i18nextLng', shared)
+  }
+} catch {
+  // Storage unavailable: fall through to the normal detection order.
+}
 
 i18n
   .use(LanguageDetector)
@@ -64,5 +85,13 @@ i18n
       convertDetectedLanguage,
     },
   })
+
+// BotsRouter fork patch (review F-17): every language change in the
+// console (switcher, profile card, post-login saved preference) goes
+// through i18n.changeLanguage, so mirroring it into the shared cookie
+// here covers all entry points at once.
+i18n.on('languageChanged', (lng) => {
+  writeSharedLanguageCookie(lng)
+})
 
 export default i18n

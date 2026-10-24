@@ -7343,6 +7343,7 @@
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom",
     "Redirecting to the model library…": "Перенаправление в библиотеку моделей…",
-    "Site mode must be beta, beta_plus, or release": "Режим сайта должен быть beta, beta_plus или release"
+    "Site mode must be beta, beta_plus, or release": "Режим сайта должен быть beta, beta_plus или release",
+    "Login parameters are invalid, please refresh the page and try again": "Неверные параметры входа, обновите страницу и попробуйте снова"
   }
 }
