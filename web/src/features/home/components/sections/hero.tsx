@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
+import { OFFICIAL_SITE_URL } from '@/lib/official-site'
 
 import { HeroTerminalDemo } from '../hero-terminal-demo'
 
@@ -54,12 +55,20 @@ export function Hero(props: HeroProps) {
   const renderDocsButton = () => {
     const isExternal = docsUrl.startsWith('http')
     if (isExternal) {
+      // Version-sync final fix: a docs link that points at the official
+      // website stays in the current tab like any in-site route; only a
+      // genuinely external docs host opens a new tab.
+      const docsOnOfficialSite = docsUrl.startsWith(OFFICIAL_SITE_URL)
       return (
         <Button
           variant='outline'
           className='group border-border/50 hover:border-border hover:bg-muted/50 inline-flex h-11 items-center gap-1.5 rounded-lg px-5 text-sm font-medium'
           render={
-            <a href={docsUrl} target='_blank' rel='noopener noreferrer' />
+            docsOnOfficialSite ? (
+              <a href={docsUrl} rel='noopener noreferrer' />
+            ) : (
+              <a href={docsUrl} target='_blank' rel='noopener noreferrer' />
+            )
           }
         >
           <BookOpen className='text-muted-foreground/80 group-hover:text-foreground size-4 transition-colors duration-200' />

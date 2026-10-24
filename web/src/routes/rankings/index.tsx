@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import z from 'zod'
 
+import { VersionedPage } from '@/components/versioned-page'
 import { Rankings } from '@/features/rankings'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { useAuthStore } from '@/stores/auth-store'
@@ -50,5 +51,17 @@ export const Route = createFileRoute('/rankings/')({
       }
     }
   },
-  component: Rankings,
+  component: RankingsRoute,
 })
+
+/**
+ * BotsRouter fork (version-sync final fix): rankings is a single merged
+ * page — the same sections in both modes (see features/rankings) — so
+ * both branches render it. The shell still wraps the route: it records
+ * the effective branch in `data-version-branch` and guarantees that any
+ * future mode divergence has to go through VersionedPage instead of a
+ * hardcoded component choice that can silently desync.
+ */
+function RankingsRoute() {
+  return <VersionedPage botsrouter={<Rankings />} newapi={<Rankings />} />
+}

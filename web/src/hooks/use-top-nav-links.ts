@@ -19,11 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useUiMode } from '@/context/ui-mode-provider'
 import { useStatus } from '@/hooks/use-status'
 import { parseHeaderNavModulesFromStatus } from '@/lib/nav-modules'
 import {
-  OFFICIAL_MODEL_LIBRARY_URL,
   OFFICIAL_SITE_URL,
+  resolveModelLibraryLink,
 } from '@/lib/official-site'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -53,6 +54,7 @@ export function useTopNavLinks(): TopNavLink[] {
   const { t } = useTranslation()
   const { status } = useStatus()
   const { auth } = useAuthStore()
+  const { uiMode } = useUiMode()
 
   // Parse HeaderNavModules
   const modules = useMemo(() => {
@@ -83,16 +85,20 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Console'), href: '/dashboard' })
   }
 
-  // Model Library: the single maintained catalog lives on the official
-  // website; this entry jumps there in the current tab instead of opening
-  // a second, console-hosted copy of the catalog.
+  // Model Library: follows the effective UI mode (version-sync final
+  // fix). In `botsrouter` mode the single maintained catalog lives on
+  // the official website and this entry jumps there in the current tab;
+  // in `newapi` mode it stays inside the console on /pricing, which
+  // renders the upstream native pricing page. Pointing here at the
+  // website unconditionally used to bypass the route-level split.
   const pricing = modules?.pricing
   if (pricing && typeof pricing === 'object' && pricing.enabled) {
     const requiresAuth = pricing.requireAuth && !isAuthed
+    const modelLibrary = resolveModelLibraryLink(uiMode)
     links.push({
       title: t('Model Library'),
-      href: OFFICIAL_MODEL_LIBRARY_URL,
-      external: true,
+      href: modelLibrary.href,
+      external: modelLibrary.external,
       sameTab: true,
       requiresAuth,
     })
@@ -105,10 +111,18 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Rankings'), href: '/rankings', requiresAuth })
   }
 
-  // Docs (supports external links)
+  // Docs (supports external links). A docs link that points at the
+  // official website stays in the current tab like every other
+  // in-site route; a genuinely external docs host keeps the new tab.
   if (modules?.docs !== false) {
     if (docsLink) {
-      links.push({ title: t('Docs'), href: docsLink, external: true })
+      const docsOnOfficialSite = docsLink.startsWith(OFFICIAL_SITE_URL)
+      links.push({
+        title: t('Docs'),
+        href: docsLink,
+        external: true,
+        sameTab: docsOnOfficialSite ? true : undefined,
+      })
     } else {
       links.push({ title: t('Docs'), href: '/docs' })
     }

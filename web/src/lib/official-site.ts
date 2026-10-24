@@ -26,3 +26,26 @@ export const OFFICIAL_SITE_URL = 'https://botsrouter.botsarena.tech'
 
 /** The official website's model library (HashRouter route). */
 export const OFFICIAL_MODEL_LIBRARY_URL = `${OFFICIAL_SITE_URL}/#/models`
+
+/**
+ * BotsRouter fork (version-sync final fix): where the top navigation's
+ * "Model Library" entry points depends on the effective UI mode, and
+ * nothing else. Previously it always pointed at the official website,
+ * so switching the console to `newapi` mode never changed the model
+ * library the user landed on — the route-level split in
+ * routes/pricing was bypassed by the nav link itself.
+ *
+ * - `botsrouter` (privatized): the official website's model library,
+ *   opened in the current tab (external to the console app).
+ * - `newapi`: the console's own `/pricing` route, which renders the
+ *   upstream native pricing page in that mode.
+ */
+export function resolveModelLibraryLink(mode: 'botsrouter' | 'newapi'): {
+  href: string
+  external: boolean
+} {
+  if (mode === 'newapi') {
+    return { href: '/pricing', external: false }
+  }
+  return { href: OFFICIAL_MODEL_LIBRARY_URL, external: true }
+}

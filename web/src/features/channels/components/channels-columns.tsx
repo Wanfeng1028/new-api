@@ -894,7 +894,8 @@ export function useChannelsColumns(
                               return
                             }
                             const targetUrl = `/models/deployments?dFilter=${encodeURIComponent(String(deploymentId))}`
-                            window.open(targetUrl, '_blank', 'noopener')
+                            // Version-sync final fix: internal route, same tab.
+                            window.open(targetUrl, '_self', 'noopener')
                           }}
                         />
                       }

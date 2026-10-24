@@ -21,7 +21,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import z from 'zod'
 
-import { useUiMode } from '@/context/ui-mode-provider'
+import { VersionedPage } from '@/components/versioned-page'
 import { ModelDetails } from '@/features/pricing/components/model-details'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { OFFICIAL_MODEL_LIBRARY_URL } from '@/lib/official-site'
@@ -67,11 +67,12 @@ const modelDetailsSearchSchema = z.object({
  * untyped and lose tokenUnit / rechargePrice.
  */
 function ModelDetailsRoute() {
-  const { uiMode } = useUiMode()
-  if (uiMode === 'newapi') {
-    return <ModelDetails />
-  }
-  return <ModelLibraryRedirect />
+  return (
+    <VersionedPage
+      botsrouter={<ModelLibraryRedirect />}
+      newapi={<ModelDetails />}
+    />
+  )
 }
 
 export const Route = createFileRoute('/pricing/$modelId/')({

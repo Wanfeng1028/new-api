@@ -89,7 +89,10 @@ export function MessageError({
             <Button
               variant='outline'
               size='sm'
-              onClick={() => window.open(MODEL_PRICING_SETTINGS_PATH, '_blank')}
+              onClick={() =>
+                // Version-sync final fix: internal settings route, same tab.
+                window.open(MODEL_PRICING_SETTINGS_PATH, '_self')
+              }
             >
               <Settings className='mr-1 h-3.5 w-3.5' />
               {t('Go to Settings')}

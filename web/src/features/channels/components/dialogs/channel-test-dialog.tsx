@@ -1256,7 +1256,8 @@ function FailureResultContent({
             size='sm'
             className='h-7 w-fit px-2 text-xs'
             onClick={() =>
-              window.open('/system-settings/billing/model-pricing', '_blank')
+              // Version-sync final fix: internal settings route, same tab.
+              window.open('/system-settings/billing/model-pricing', '_self')
             }
           >
             <Settings className='mr-1 h-3 w-3 shrink-0' />

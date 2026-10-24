@@ -21,7 +21,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import z from 'zod'
 
-import { useUiMode } from '@/context/ui-mode-provider'
+import { VersionedPage } from '@/components/versioned-page'
 import { Pricing } from '@/features/pricing'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { OFFICIAL_MODEL_LIBRARY_URL } from '@/lib/official-site'
@@ -29,7 +29,8 @@ import { useAuthStore } from '@/stores/auth-store'
 
 /**
  * The model library is maintained in exactly one place: the official
- * website. This route only forwards there (same tab), so old console
+ * website. This redirect is the `botsrouter` branch of the route (see
+ * PricingRoute below); it forwards there (same tab), so old console
  * bookmarks and deep links keep working without a second catalog copy.
  */
 function ModelLibraryRedirect() {
@@ -60,17 +61,20 @@ const pricingSearchSchema = z.object({
 })
 
 /**
- * BotsRouter fork patch (review F-08): the redirect to the official
- * website's model library applies to the privatized UI mode only. In
- * the admin-only `newapi` mode this route renders the upstream native
- * pricing page, like every other console page in that mode.
+ * BotsRouter fork patch (review F-08, version-sync final fix): the
+ * redirect to the official website's model library applies to the
+ * privatized UI mode only. In the admin-only `newapi` mode this route
+ * renders the upstream native pricing page, like every other console
+ * page in that mode. The branch goes through VersionedPage so the
+ * choice is sourced from UiModeProvider alone — see that component.
  */
 function PricingRoute() {
-  const { uiMode } = useUiMode()
-  if (uiMode === 'newapi') {
-    return <Pricing />
-  }
-  return <ModelLibraryRedirect />
+  return (
+    <VersionedPage
+      botsrouter={<ModelLibraryRedirect />}
+      newapi={<Pricing />}
+    />
+  )
 }
 
 export const Route = createFileRoute('/pricing/')({
