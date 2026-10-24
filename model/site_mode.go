@@ -2,6 +2,7 @@ package model
 
 import (
 	"slices"
+	"sync"
 
 	"github.com/QuantumNous/new-api/common"
 )
@@ -38,11 +39,23 @@ func NormalizeSiteMode(value string) string {
 	}
 }
 
+var siteModeUnsetWarnOnce sync.Once
+
 // GetSiteMode returns the current site mode.
 func GetSiteMode() string {
 	common.OptionMapRWMutex.RLock()
 	defer common.OptionMapRWMutex.RUnlock()
-	return NormalizeSiteMode(common.OptionMap[SiteModeOptionKey])
+	raw := common.OptionMap[SiteModeOptionKey]
+	if raw == "" {
+		// BotsRouter fork patch (review F-16): an unset option silently
+		// falls back to beta (payments closed). Warn once so a lost
+		// option row is visible in logs instead of silently changing
+		// payment behaviour.
+		siteModeUnsetWarnOnce.Do(func() {
+			common.SysLog("site mode option is unset, falling back to beta (payments closed)")
+		})
+	}
+	return NormalizeSiteMode(raw)
 }
 
 // GetConnectedModels returns the sorted names of the models covered by at

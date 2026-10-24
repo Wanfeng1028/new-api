@@ -70,6 +70,11 @@ func Login(c *gin.Context) {
 		}
 		password, err = common.DecryptPassword(loginRequest.PasswordEncrypted, loginRequest.EncryptionKeyID)
 		if err != nil {
+			// BotsRouter fork patch (review F-03): keep the client
+			// message identical to a wrong password (no oracle), but
+			// log decryption failures distinctly so a client/server
+			// key mismatch is not misdiagnosed as a wrong password.
+			common.SysLog(common.LogText("Login password decryption failed for user %s: %v", username, err))
 			common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
 			return
 		}

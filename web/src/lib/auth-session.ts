@@ -237,7 +237,7 @@ export function createRefreshRunner(
         await runtime.wait(delay)
         return run(raceAttempt + 1, allowMismatchRetry)
       }
-      runtime.clear(false)
+      runtime.clear(false, 'idle')
       return { kind: 'out_of_sync', code }
     }
 
@@ -263,7 +263,7 @@ export function createRefreshRunner(
       }
     }
 
-    runtime.clear(false)
+    runtime.clear(false, 'idle')
     return {
       kind: 'out_of_sync',
       code: code ?? 'AUTH_INVALID_REFRESH_RESPONSE',

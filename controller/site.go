@@ -27,6 +27,13 @@ func GetSiteMode(c *gin.Context) {
 // bridge with a root session token. The value goes through the SiteMode
 // option validation in model.UpdateOption.
 func UpdateSiteMode(c *gin.Context) {
+	// BotsRouter fork patch (review F-14): defense in depth, the
+	// handler re-checks the root role itself instead of relying only
+	// on the route middleware.
+	if c.GetInt("role") < common.RoleRootUser {
+		common.ApiErrorMsg(c, "insufficient privilege")
+		return
+	}
 	var request struct {
 		Mode string `json:"mode"`
 	}
