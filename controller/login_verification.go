@@ -157,6 +157,19 @@ func completeVerifiedLoginResponse(c *gin.Context, bundle *service.AuthBundle, m
 		writeAuthSessionError(c, err)
 		return
 	}
+	// BotsRouter fork patch (review F-13): a password login that went
+	// through a verification challenge deferred its failure-counter
+	// clear (and the admin new-IP alert) to this point, so the counter
+	// is wiped only once the second factor has actually succeeded.
+	// Other primary methods (OAuth, passkey ceremonies) never fed the
+	// password counter, so they skip this.
+	if bundle.Session.LoginMethod == "password" {
+		clientIP := registrationClientIP(c)
+		common.RecordLoginSuccess(user.Username, clientIP)
+		if user.Role >= common.RoleAdminUser {
+			common.NoteAdminLogin(user.Username, clientIP)
+		}
+	}
 	c.Set("login_verification_method", method)
 	if migration != nil {
 		// The legacy GitHub binding was rewritten together with this session.

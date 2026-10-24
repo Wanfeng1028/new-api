@@ -21,6 +21,16 @@ func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string
 
 	filtered := make([]model.Pricing, 0, len(pricing))
 	for _, item := range pricing {
+		// BotsRouter fork patch (review F-18): entries with an empty
+		// enable-group list are catalog-only models (metadata exists, no
+		// serving channel yet, tagged accordingly in model.updatePricing).
+		// They are display-only and always pass this filter; group-based
+		// filtering in the frontend still excludes them from any concrete
+		// group view because they belong to none.
+		if len(item.EnableGroup) == 0 {
+			filtered = append(filtered, item)
+			continue
+		}
 		if common.StringsContains(item.EnableGroup, "all") {
 			filtered = append(filtered, item)
 			continue

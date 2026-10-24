@@ -88,8 +88,12 @@ func redisRateLimitHandler(subject string, duration int64, totalMaxCount, succes
 		successKey := fmt.Sprintf("rateLimit:%s:%s", ModelRequestRateLimitSuccessCountMark, subject)
 		allowed, err := checkRedisRateLimit(ctx, rdb, successKey, successMaxCount, duration)
 		if err != nil {
-			fmt.Println(common.LogText("failed to check the successful request limit: %s", err.Error()))
-			abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
+			// Review F-15: degrade to the in-memory handler instead of
+			// failing closed with a 500, matching rate-limit.go. The
+			// Redis check above is read-only, so replaying the request
+			// through the memory handler cannot double-count.
+			fmt.Println(common.LogText("failed to check the successful request limit, falling back to in-memory limiter: %s", err.Error()))
+			memoryRateLimitHandler(subject, duration, totalMaxCount, successMaxCount)(c)
 			return
 		}
 		if !allowed {
@@ -111,8 +115,9 @@ func redisRateLimitHandler(subject string, duration int64, totalMaxCount, succes
 			)
 
 			if err != nil {
-				fmt.Println(common.LogText("failed to check the total request limit: %s", err.Error()))
-				abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
+				// Review F-15: same in-memory degradation as above.
+				fmt.Println(common.LogText("failed to check the total request limit, falling back to in-memory limiter: %s", err.Error()))
+				memoryRateLimitHandler(subject, duration, totalMaxCount, successMaxCount)(c)
 				return
 			}
 

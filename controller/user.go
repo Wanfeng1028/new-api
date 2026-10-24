@@ -70,12 +70,16 @@ func Login(c *gin.Context) {
 		}
 		password, err = common.DecryptPassword(loginRequest.PasswordEncrypted, loginRequest.EncryptionKeyID)
 		if err != nil {
-			// BotsRouter fork patch (review F-03): keep the client
-			// message identical to a wrong password (no oracle), but
-			// log decryption failures distinctly so a client/server
-			// key mismatch is not misdiagnosed as a wrong password.
+			// BotsRouter fork patch (review F-03, completed 2026-10-24):
+			// decryption failures get their own client message, distinct
+			// from a wrong password. This is not an oracle: decryption
+			// runs before any credential check and its outcome depends
+			// only on the submitted ciphertext and the server key, never
+			// on whether the underlying password is correct, so the
+			// distinct message leaks nothing about the account. The
+			// distinct SysLog line is kept for server-side diagnosis.
 			common.SysLog(common.LogText("Login password decryption failed for user %s: %v", username, err))
-			common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
+			common.ApiErrorT(c, "Login parameters are invalid, please refresh the page and try again")
 			return
 		}
 	}
@@ -127,14 +131,32 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// BotsRouter fork patch: clear the pair's failure counter and feed
-	// the admin new-IP login alert.
+	// BotsRouter fork patch (review F-13, 2026-10-24): the pair's
+	// failure counter is cleared only when the login actually
+	// completes. Previously RecordLoginSuccess ran at the password
+	// stage, so for accounts with a second factor an attacker who
+	// guessed the password once (then failed the 2FA challenge) still
+	// wiped the counter that throttles further password guessing.
+	// Inline the setupLogin flow for the password path: when a
+	// verification challenge is issued, defer the clear (and the admin
+	// new-IP alert) to completeVerifiedLoginResponse, which runs only
+	// after the second factor succeeds. Accounts without a second
+	// factor complete here exactly as before.
+	challenge, err := service.StartLoginVerification(&user, loginMethodFromContext(c), nil)
+	if err != nil {
+		writeSecurityOperationError(c, err)
+		return
+	}
+	if challenge != nil {
+		setAuthNoStore(c)
+		common.ApiSuccess(c, challenge)
+		return
+	}
 	common.RecordLoginSuccess(username, clientIP)
 	if user.Role >= common.RoleAdminUser {
 		common.NoteAdminLogin(user.Username, clientIP)
 	}
-
-	setupLogin(&user, nil, c)
+	setupLoginAtAuthVersion(&user, user.AuthVersion, c)
 }
 
 // loginMethodFromContext 根据请求路径推导登录方式，用于登录审计日志。

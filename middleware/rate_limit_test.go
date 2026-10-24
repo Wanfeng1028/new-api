@@ -386,12 +386,22 @@ func TestRedisFailurePolicies(t *testing.T) {
 		c.Status(http.StatusNoContent)
 	})
 
+	// Review F-15 (2026-10-24): the failure policy was deliberately
+	// changed — a Redis outage no longer fails closed with a bare 500.
+	// Like the email-verification limiter in this package, the IP and
+	// user limiters degrade to the in-memory limiter: the first request
+	// passes, the second exceeds the limit of 1 and is rejected with a
+	// 429 carrying the JSON business body from writeRateLimited (F-01).
 	ipResponse := performRateLimitRequest(router, "/ip", "192.0.2.60:12345")
-	assert.Equal(t, http.StatusInternalServerError, ipResponse.Code)
-	assert.Empty(t, ipResponse.Body.String())
+	assert.Equal(t, http.StatusNoContent, ipResponse.Code)
+	ipLimited := performRateLimitRequest(router, "/ip", "192.0.2.60:12345")
+	assert.Equal(t, http.StatusTooManyRequests, ipLimited.Code)
+	assert.JSONEq(t, `{"success":false,"message":"请求过于频繁，请稍后再试"}`, ipLimited.Body.String())
 	userResponse := performRateLimitRequest(router, "/user", "192.0.2.61:12345")
-	assert.Equal(t, http.StatusInternalServerError, userResponse.Code)
-	assert.Empty(t, userResponse.Body.String())
+	assert.Equal(t, http.StatusNoContent, userResponse.Code)
+	userLimited := performRateLimitRequest(router, "/user", "192.0.2.61:12345")
+	assert.Equal(t, http.StatusTooManyRequests, userLimited.Code)
+	assert.JSONEq(t, `{"success":false,"message":"请求过于频繁，请稍后再试"}`, userLimited.Body.String())
 	assert.Equal(t, http.StatusNoContent, performRateLimitRequest(router, "/email", "192.0.2.62:12345").Code)
 }
 

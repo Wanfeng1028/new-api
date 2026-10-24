@@ -122,13 +122,28 @@ func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark st
 		duration,
 	)
 	if err != nil {
-		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (mark=%s): %v", mark, err))
-		c.Status(http.StatusInternalServerError)
-		c.Abort()
+		// Review F-15: a Redis outage must not fail closed with a bare
+		// 500 while the in-memory implementation would have served the
+		// request. Degrade to the in-memory limiter (same key shape as
+		// memoryRateLimiter) and log, so both implementations behave
+		// alike when their store is unavailable.
+		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (mark=%s), falling back to in-memory limiter: %v", mark, err))
+		memoryRateLimitFallback(c, mark+c.ClientIP(), maxRequestNum, duration)
 		return
 	}
 	if !allowed {
 		writeRateLimited(c, ttlSeconds)
+	}
+}
+
+// memoryRateLimitFallback applies the in-memory limiter for callers whose
+// primary (Redis) limiter is unavailable. It is the shared degradation
+// path for every Redis-backed limiter in this file (review F-15).
+func memoryRateLimitFallback(c *gin.Context, key string, maxRequestNum int, duration int64) {
+	// It's safe to call multi times.
+	inMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
+	if !inMemoryRateLimiter.Request(key, maxRequestNum, duration) {
+		writeRateLimited(c, duration)
 	}
 }
 
@@ -144,11 +159,19 @@ func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark s
 // clients can back off instead of treating the rejection as a fatal error.
 // The in-memory limiter cannot report the remaining window, so callers
 // without a TTL pass the full window duration as a conservative upper bound.
+// Review F-01 (residual): the response also carries a JSON business body
+// (success=false + message), because a bare 429 on the login path was
+// rendered by the frontend as a generic credential failure ("password
+// incorrect") during the 2026-10-24 lockout incident. The status code is
+// unchanged, so existing callers that branch on 429 are unaffected.
 func writeRateLimited(c *gin.Context, retryAfterSeconds int64) {
 	if retryAfterSeconds > 0 {
 		c.Header("Retry-After", strconv.FormatInt(retryAfterSeconds, 10))
 	}
-	c.Status(http.StatusTooManyRequests)
+	c.JSON(http.StatusTooManyRequests, gin.H{
+		"success": false,
+		"message": "请求过于频繁，请稍后再试",
+	})
 	c.Abort()
 }
 
@@ -273,9 +296,10 @@ func loginRateLimiter(c *gin.Context, key string, maxRequestNum int, duration in
 			duration,
 		)
 		if err != nil {
-			logger.LogError(c.Request.Context(), common.LogText("login rate limit check failed: %v", err))
-			c.Status(http.StatusInternalServerError)
-			c.Abort()
+			// Review F-15: degrade to the in-memory limiter instead of
+			// failing closed with a 500 (see redisRateLimiter).
+			logger.LogError(c.Request.Context(), common.LogText("login rate limit check failed, falling back to in-memory limiter: %v", err))
+			memoryRateLimitFallback(c, "LG:"+key, maxRequestNum, duration)
 			return
 		}
 		if !allowed {
@@ -396,9 +420,12 @@ func userRateLimitFactory(maxRequestNum int, duration int64, mark string, exempt
 func userRedisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, key string) {
 	allowed, _, ttlSeconds, err := redisFixedWindowTake(c.Request.Context(), key, maxRequestNum, duration)
 	if err != nil {
-		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (key=%s): %v", key, err))
-		c.Status(http.StatusInternalServerError)
-		c.Abort()
+		// Review F-15: degrade to the in-memory limiter instead of
+		// failing closed with a 500 (see redisRateLimiter). The Redis
+		// key already encodes the user identity, so it doubles as the
+		// in-memory key.
+		logger.LogError(c.Request.Context(), common.LogText("rate limit check failed (key=%s), falling back to in-memory limiter: %v", key, err))
+		memoryRateLimitFallback(c, key, maxRequestNum, duration)
 		return
 	}
 	if !allowed {
