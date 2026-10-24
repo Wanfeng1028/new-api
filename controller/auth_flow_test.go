@@ -317,7 +317,7 @@ func TestSecurityLoginFactorStateDoesNotAddPasswordLoginQueries(t *testing.T) {
 	queries = 0
 	response := securityEnrollmentRequest("POST", "/api/user/login", `{"username":"enrollment-user","password":"enrollment-password"}`, "", service.AuthIdentity{}, Login)
 	assert.Contains(t, response.Body.String(), `"require_verification":true`)
-	assert.Equal(t, 2, queries, "only the existing credential lookup and the replacement factor-state lookup run before the challenge")
+	assert.Equal(t, 3, queries, "credential lookup, replacement factor-state lookup, and admin role probe (lockout exemption basis) run before the challenge")
 }
 
 type boundLoginOAuthProvider struct {
