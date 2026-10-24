@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -130,4 +132,86 @@ func TestUpdateSiteModeRejectsMalformedJSON(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, model.SiteModeBeta, model.GetSiteMode())
+}
+
+// TestUpdateSiteModeWithSessionBearerToken exercises the exact credential
+// form the official website's bridge presents: the access token issued for
+// a dashboard login session, sent as a Bearer header through RootAuth.
+// Before this test existed, the handler was only tested in isolation and
+// the bridge-to-RootAuth contract went unverified.
+func TestUpdateSiteModeWithSessionBearerToken(t *testing.T) {
+	setupSiteModeControllerTest(t)
+
+	require.NoError(t, model.DB.AutoMigrate(&model.User{}, &model.UserSession{}, &model.UserAccessToken{}, &model.AuthFlow{}, &model.AuditLog{}))
+
+	root := &model.User{
+		Username:    "site-mode-root",
+		AffCode:     "site-mode-root-aff",
+		Password:    "unused-in-test",
+		Role:        common.RoleRootUser,
+		Status:      common.UserStatusEnabled,
+		Group:       "default",
+		AuthVersion: 1,
+	}
+	require.NoError(t, model.DB.Create(root).Error)
+	plain := &model.User{
+		Username:    "site-mode-plain",
+		AffCode:     "site-mode-plain-aff",
+		Password:    "unused-in-test",
+		Role:        common.RoleCommonUser,
+		Status:      common.UserStatusEnabled,
+		Group:       "default",
+		AuthVersion: 1,
+	}
+	require.NoError(t, model.DB.Create(plain).Error)
+
+	rootBundle, err := service.CreateLoginSession(root.Id, "password", "127.0.0.1", "test-agent")
+	require.NoError(t, err)
+	require.NotEmpty(t, rootBundle.AccessToken)
+	plainBundle, err := service.CreateLoginSession(plain.Id, "password", "127.0.0.1", "test-agent")
+	require.NoError(t, err)
+
+	router := gin.New()
+	router.POST("/api/site-mode", middleware.RootAuth(), UpdateSiteMode)
+	router.GET("/api/site-mode", GetSiteMode)
+
+	post := func(token string) *httptest.ResponseRecorder {
+		bodyBytes, err := common.Marshal(map[string]string{"mode": model.SiteModeBetaPlus})
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPost, "/api/site-mode", strings.NewReader(string(bodyBytes)))
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+
+	// No credential at all: rejected, mode untouched.
+	w := post("")
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, model.SiteModeBeta, model.GetSiteMode())
+
+	// Garbage bearer value: rejected, mode untouched.
+	w = post("not-a-real-token")
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Equal(t, model.SiteModeBeta, model.GetSiteMode())
+
+	// A common user's session token passes authentication but not RootAuth.
+	w = post(plainBundle.AccessToken)
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Equal(t, model.SiteModeBeta, model.GetSiteMode())
+
+	// The root session token — the bridge's credential form — switches the
+	// mode and the public read reports the new value.
+	w = post(rootBundle.AccessToken)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"mode":"beta_plus"`)
+	assert.Equal(t, model.SiteModeBetaPlus, model.GetSiteMode())
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/site-mode", nil))
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"mode":"beta_plus"`)
 }
