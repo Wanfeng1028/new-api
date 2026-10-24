@@ -21,16 +21,6 @@ func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string
 
 	filtered := make([]model.Pricing, 0, len(pricing))
 	for _, item := range pricing {
-		// BotsRouter fork patch (review F-18): entries with an empty
-		// enable-group list are catalog-only models (metadata exists, no
-		// serving channel yet, tagged accordingly in model.updatePricing).
-		// They are display-only and always pass this filter; group-based
-		// filtering in the frontend still excludes them from any concrete
-		// group view because they belong to none.
-		if len(item.EnableGroup) == 0 {
-			filtered = append(filtered, item)
-			continue
-		}
 		if common.StringsContains(item.EnableGroup, "all") {
 			filtered = append(filtered, item)
 			continue
@@ -67,6 +57,14 @@ func GetPricing(c *gin.Context) {
 
 	usableGroup = service.GetUserUsableGroups(group)
 	pricing = filterPricingByUsableGroups(pricing, usableGroup)
+	// BotsRouter fork patch (review F-18): the native model library
+	// shows the full catalog. Catalog-only models (metadata exists, no
+	// serving channel yet) are appended here, after the usable-group
+	// filter, so they are display-only: they never enter the shared
+	// pricing cache, the enable-group maps, or any relay/billing path.
+	// They carry an empty group set and a visible "渠道接入中" tag, and
+	// leave this list on their own once a channel enables the model.
+	pricing = append(pricing, model.GetCatalogOnlyPricing()...)
 	// check groupRatio contains usableGroup
 	for group := range ratio_setting.GetGroupRatioCopy() {
 		if _, ok := usableGroup[group]; !ok {

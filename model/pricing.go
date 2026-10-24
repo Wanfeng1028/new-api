@@ -1,6 +1,7 @@
 package model
 
 import (
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -87,6 +88,95 @@ func GetPricing() []Pricing {
 		}
 	}
 	return pricingMap
+}
+
+// GetCatalogOnlyPricing returns display-only pricing entries for models
+// that have enabled exact-name metadata but no serving channel yet
+// (review F-18). It is consumed ONLY by the /api/pricing endpoint so the
+// native model library can show the full catalog; it deliberately does
+// NOT feed the shared pricing cache, so GetPricing, the enable-group /
+// quota-type maps, rankings metadata and the relay/billing paths keep
+// upstream semantics (a model with no channel is not a servable model).
+// Entries carry an empty group set and the catalogOnlyTag marker, and
+// they leave this list on their own once a channel enables the model.
+// Prices are read with the same ratio_setting getters updatePricing
+// uses, so the displayed price stays the official price.
+func GetCatalogOnlyPricing() []Pricing {
+	served := make(map[string]bool)
+	for _, p := range GetPricing() {
+		served[p.ModelName] = true
+	}
+	var allMeta []Model
+	_ = DB.Find(&allMeta).Error
+	names := make([]string, 0)
+	seen := make(map[string]bool)
+	for i := range allMeta {
+		meta := &allMeta[i]
+		if meta.Status != 1 || meta.NameRule != NameRuleExact {
+			continue
+		}
+		if served[meta.ModelName] || seen[meta.ModelName] {
+			continue
+		}
+		seen[meta.ModelName] = true
+		names = append(names, meta.ModelName)
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	metaMap := resolveModelMetadata(allMeta, names)
+	slices.Sort(names)
+	entries := make([]Pricing, 0, len(names))
+	for _, name := range names {
+		pricing := Pricing{
+			ModelName:              name,
+			EnableGroup:            make([]string, 0),
+			SupportedEndpointTypes: make([]constant.EndpointType, 0),
+		}
+		if meta, ok := metaMap[name]; ok {
+			if meta.Status != 1 {
+				continue
+			}
+			pricing.Description = meta.Description
+			pricing.Icon = meta.Icon
+			pricing.Tags = appendCatalogOnlyTag(meta.Tags)
+			pricing.VendorID = meta.VendorID
+		}
+		if modelPrice, findPrice := ratio_setting.GetModelPrice(name, false); findPrice {
+			pricing.ModelPrice = modelPrice
+			pricing.QuotaType = 1
+		} else {
+			modelRatio, _, _ := ratio_setting.GetModelRatio(name)
+			pricing.ModelRatio = modelRatio
+			pricing.CompletionRatio = ratio_setting.GetCompletionRatio(name)
+			pricing.QuotaType = 0
+		}
+		if cacheRatio, ok := ratio_setting.GetCacheRatio(name); ok {
+			pricing.CacheRatio = &cacheRatio
+		}
+		if createCacheRatio, ok := ratio_setting.GetCreateCacheRatio(name); ok {
+			pricing.CreateCacheRatio = &createCacheRatio
+		}
+		if imageRatio, ok := ratio_setting.GetImageRatio(name); ok {
+			pricing.ImageRatio = &imageRatio
+		}
+		if ratio_setting.ContainsAudioRatio(name) {
+			audioRatio := ratio_setting.GetAudioRatio(name)
+			pricing.AudioRatio = &audioRatio
+		}
+		if ratio_setting.ContainsAudioCompletionRatio(name) {
+			audioCompletionRatio := ratio_setting.GetAudioCompletionRatio(name)
+			pricing.AudioCompletionRatio = &audioCompletionRatio
+		}
+		if billingMode := billing_setting.GetBillingMode(name); billingMode == "tiered_expr" {
+			if expr, ok := billing_setting.GetBillingExpr(name); ok && strings.TrimSpace(expr) != "" {
+				pricing.BillingMode = billingMode
+				pricing.BillingExpr = expr
+			}
+		}
+		entries = append(entries, pricing)
+	}
+	return entries
 }
 
 func InvalidatePricingCache() {
@@ -223,36 +313,6 @@ func updatePricing() {
 	for _, ability := range enableAbilities {
 		names = append(names, ability.Model)
 	}
-	// BotsRouter fork patch (review F-18): catalog models — exact-name
-	// metadata rows (status enabled) that no enabled channel serves yet —
-	// are listed too, as display-only entries. They join the same build
-	// loop below with an empty group set; the loop tags them with
-	// catalogOnlyTag so nobody mistakes them for callable models. Relay
-	// and billing never consult this list (they resolve channels from
-	// abilities), and GetConnectedModels reads abilities directly, so
-	// listing a model here makes it visible, never usable. Once a
-	// channel enables the model it leaves this set and the tag is gone.
-	catalogOnlyModels := make(map[string]bool)
-	{
-		abilityNames := types.NewSet[string]()
-		for _, name := range names {
-			abilityNames.Add(name)
-		}
-		for i := range allMeta {
-			meta := &allMeta[i]
-			if meta.Status != 1 || meta.NameRule != NameRuleExact {
-				continue
-			}
-			if abilityNames.Contains(meta.ModelName) {
-				continue
-			}
-			if catalogOnlyModels[meta.ModelName] {
-				continue
-			}
-			catalogOnlyModels[meta.ModelName] = true
-			names = append(names, meta.ModelName)
-		}
-	}
 	metaMap := resolveModelMetadata(allMeta, names)
 
 	// 预加载供应商
@@ -286,14 +346,6 @@ func updatePricing() {
 			modelGroupsMap[ability.Model] = groups
 		}
 		groups.Add(ability.Group)
-	}
-
-	// Review F-18: catalog-only models enter the build loop with an
-	// empty group set (display-only, see catalogOnlyModels above).
-	for name := range catalogOnlyModels {
-		if _, ok := modelGroupsMap[name]; !ok {
-			modelGroupsMap[name] = types.NewSet[string]()
-		}
 	}
 
 	//这里使用切片而不是Set，因为一个模型可能支持多个端点类型，并且第一个端点是优先使用端点
@@ -400,12 +452,6 @@ func updatePricing() {
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.VendorID = meta.VendorID
-			// Review F-18: catalog-only entries carry a visible marker
-			// tag; the pricing page renders tags as chips and can filter
-			// by them, so "no channel yet" is explicit in the UI.
-			if catalogOnlyModels[model] {
-				pricing.Tags = appendCatalogOnlyTag(pricing.Tags)
-			}
 		}
 		modelPrice, findPrice := ratio_setting.GetModelPrice(model, false)
 		if findPrice {
