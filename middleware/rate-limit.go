@@ -1,15 +1,21 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
@@ -193,6 +199,116 @@ func CriticalRateLimit() func(c *gin.Context) {
 		return rateLimitFactory(common.CriticalRateLimitNum, common.CriticalRateLimitDuration, "CT")
 	}
 	return defNext
+}
+
+// RefreshRateLimit gives session-token refresh its own generous bucket.
+// Refresh is cookie-authenticated and rotates the refresh token; the
+// marketing site's session bridge and every open console tab call it on
+// load. Sharing the 20-per-20min critical bucket with password login let
+// a burst of refreshes burn the whole budget and lock the site owner out
+// of password login with bare 429s (incident 2026-10-24). 600/20min per
+// IP is far above any legitimate multi-tab pattern while still capping
+// scripted abuse.
+func RefreshRateLimit() func(c *gin.Context) {
+	if common.CriticalRateLimitEnable {
+		return rateLimitFactory(600, common.CriticalRateLimitDuration, "RF")
+	}
+	return defNext
+}
+
+// loginAdminCache memoizes username -> is-admin lookups for
+// LoginRateLimit so the login path does not hit the DB on every attempt.
+var loginAdminCache sync.Map // string -> loginAdminEntry
+
+type loginAdminEntry struct {
+	admin bool
+	exp   time.Time
+}
+
+// isAdminUsername reports whether username belongs to an admin-or-above
+// account. Fails closed (false) on any error so a DB hiccup never widens
+// anyone's allowance.
+func isAdminUsername(username string) bool {
+	if username == "" || model.DB == nil {
+		return false
+	}
+	if v, ok := loginAdminCache.Load(username); ok {
+		if e, ok := v.(loginAdminEntry); ok && time.Now().Before(e.exp) {
+			return e.admin
+		}
+	}
+	var probe model.User
+	err := model.DB.Select("role").Where("username = ?", username).First(&probe).Error
+	admin := err == nil && probe.Role >= common.RoleAdminUser
+	loginAdminCache.Store(username, loginAdminEntry{admin: admin, exp: time.Now().Add(time.Minute)})
+	return admin
+}
+
+// peekLoginUsername extracts the username from a JSON login body without
+// consuming it: the body is restored for the downstream handler.
+func peekLoginUsername(c *gin.Context) string {
+	if c.Request == nil || c.Request.Body == nil {
+		return ""
+	}
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 64*1024))
+	if err != nil {
+		return ""
+	}
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	var payload struct {
+		Username string `json:"username"`
+	}
+	if json.Unmarshal(body, &payload) != nil {
+		return ""
+	}
+	return payload.Username
+}
+
+func loginRateLimiter(c *gin.Context, key string, maxRequestNum int, duration int64) {
+	if common.RedisEnabled {
+		allowed, _, ttlSeconds, err := redisFixedWindowTake(
+			c.Request.Context(),
+			redisRateLimitNamespace+":LG:"+key,
+			maxRequestNum,
+			duration,
+		)
+		if err != nil {
+			logger.LogError(c.Request.Context(), common.LogText("login rate limit check failed: %v", err))
+			c.Status(http.StatusInternalServerError)
+			c.Abort()
+			return
+		}
+		if !allowed {
+			writeRateLimited(c, ttlSeconds)
+		}
+		return
+	}
+	inMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
+	if !inMemoryRateLimiter.Request("LG:"+key, maxRequestNum, duration) {
+		writeRateLimited(c, duration)
+	}
+}
+
+// LoginRateLimit throttles password login per client IP + username
+// instead of per IP alone. The old shared critical bucket keyed only by
+// IP (behind Cloudflare, an edge IP shared by many visitors), so other
+// critical-route traffic or another account's attempts could exhaust a
+// user's login budget. Admin accounts get a far larger allowance: the
+// site owner must never be throttled out of his own console, while the
+// per-IP+account cap, the pair lockout for regular users, 2FA and the
+// new-IP admin login alerts still bound scripted guessing.
+func LoginRateLimit() func(c *gin.Context) {
+	if !common.CriticalRateLimitEnable {
+		return defNext
+	}
+	return func(c *gin.Context) {
+		username := peekLoginUsername(c)
+		maxRequestNum := common.CriticalRateLimitNum
+		if isAdminUsername(username) {
+			maxRequestNum = 300
+		}
+		loginRateLimiter(c, c.ClientIP()+":"+username, maxRequestNum, common.CriticalRateLimitDuration)
+	}
 }
 
 func UserCriticalRateLimit(scope string) func(c *gin.Context) {

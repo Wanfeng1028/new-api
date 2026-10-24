@@ -82,9 +82,24 @@ func Login(c *gin.Context) {
 	// common/risk_guard.go). Keyed by pair so an attacker cannot lock
 	// the account owner out from everywhere.
 	clientIP := registrationClientIP(c)
-	if locked, _ := common.LoginLocked(username, clientIP); locked {
-		common.ApiErrorMsg(c, "尝试次数过多，请 15 分钟后再试")
-		return
+	// BotsRouter fork patch: admin accounts are exempt from the pair
+	// lockout and from failure recording. The lockout exists to stop
+	// credential stuffing against regular users; applying it to the
+	// site owner only hands an attacker (or a runaway client) a way to
+	// lock the owner out of his own console. Admin logins remain
+	// protected by 2FA and the new-IP alert in NoteAdminLogin below.
+	isAdminLogin := false
+	{
+		probe := model.User{}
+		if err := model.DB.Select("role").Where("username = ?", username).First(&probe).Error; err == nil && probe.Role >= common.RoleAdminUser {
+			isAdminLogin = true
+		}
+	}
+	if !isAdminLogin {
+		if locked, _ := common.LoginLocked(username, clientIP); locked {
+			common.ApiErrorMsg(c, "尝试次数过多，请 15 分钟后再试")
+			return
+		}
 	}
 	user := model.User{
 		Username: username,
@@ -99,7 +114,9 @@ func Login(c *gin.Context) {
 		case errors.Is(err, model.ErrUserEmptyCredentials):
 			common.ApiErrorT(c, "Invalid parameters")
 		default:
-			common.RecordLoginFailure(username, clientIP)
+			if !isAdminLogin {
+				common.RecordLoginFailure(username, clientIP)
+			}
 			common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
 		}
 		return
